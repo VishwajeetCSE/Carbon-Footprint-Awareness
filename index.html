@@ -8,8 +8,19 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Main stylesheet -->
-    <link rel="stylesheet" href="styles.css">
+    <!-- Main stylesheet with cache buster -->
+    <link rel="stylesheet" href="styles.css?v=1.0.3">
+    <!-- Inline style fallback to robustly hide skip-link before external CSS loads or if cached -->
+    <style>
+        .skip-to-content {
+            position: absolute;
+            top: -120px;
+            left: 20px;
+        }
+        .skip-to-content:focus {
+            top: 20px;
+        }
+    </style>
     <!-- Lucide Icons CDN -->
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -612,7 +623,7 @@
     <!-- Accessibility Live Region for Dynamic Announcements -->
     <div id="sr-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
 
-    <!-- Core application script -->
-    <script src="app.js"></script>
+    <!-- Core application script with cache buster -->
+    <script src="app.js?v=1.0.3"></script>
 </body>
 </html>
