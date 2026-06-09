@@ -142,6 +142,13 @@ document.addEventListener("DOMContentLoaded", () => {
             switchTab(tabParam);
         }, 100);
     }
+
+    // Check if autoplay parameter is specified
+    if (urlParams.get("demo") === "autoplay") {
+        setTimeout(() => {
+            startAutoplayDemo();
+        }, 1000);
+    }
 });
 
 // Setup UI Tab Navs, Event Listeners, and Range Value Syncs
@@ -1463,4 +1470,201 @@ function announceToScreenReader(message) {
             announcer.textContent = message;
         }, 50);
     }
+}
+
+// --- Autoplay Demo Tour ---
+function startAutoplayDemo() {
+    // Show a floating visual indicator on the screen that autoplay is running
+    const demoOverlay = document.createElement("div");
+    demoOverlay.style.position = "fixed";
+    demoOverlay.style.bottom = "20px";
+    demoOverlay.style.right = "20px";
+    demoOverlay.style.backgroundColor = "hsl(var(--primary-emerald))";
+    demoOverlay.style.color = "#ffffff";
+    demoOverlay.style.padding = "10px 20px";
+    demoOverlay.style.borderRadius = "30px";
+    demoOverlay.style.boxShadow = "var(--shadow-glow)";
+    demoOverlay.style.zIndex = "3000";
+    demoOverlay.style.fontWeight = "bold";
+    demoOverlay.style.fontFamily = "var(--font-sans)";
+    demoOverlay.style.display = "flex";
+    demoOverlay.style.alignItems = "center";
+    demoOverlay.style.gap = "8px";
+    demoOverlay.innerHTML = `<span class="typing-dot" style="animation: dotBounce 1.4s infinite; font-size: 1.5rem; line-height: 0.5;">.</span> Autoplay Demo Running...`;
+    document.body.appendChild(demoOverlay);
+
+    const updateStatus = (text) => {
+        demoOverlay.innerHTML = `<span class="typing-dot" style="animation: dotBounce 1.4s infinite; font-size: 1.5rem; line-height: 0.5;">.</span> ${text}`;
+    };
+
+    // Step 1: Open app, show empty dashboard state (reset local storage first to clear any old states)
+    localStorage.removeItem("carbontrack_ai_state");
+    appState = {
+        hasCalculated: false,
+        calculatedEmissions: { transport: 0, energy: 0, food: 0, shopping: 0, total: 0 },
+        greenScore: 0,
+        dailyStreak: 1,
+        lastLoginDate: new Date().toDateString(),
+        greenPoints: 0,
+        challenges: [
+            { id: 'water-bottle', text: 'Carry a reusable water bottle today', points: 15, completed: false },
+            { id: 'no-plastic', text: 'Avoid all single-use plastic packaging', points: 20, completed: false },
+            { id: 'public-transit', text: 'Use public transport, bike, or walk', points: 30, completed: false },
+            { id: 'unplug-devices', text: 'Unplug idle electronics and turn off lights', points: 20, completed: false },
+            { id: 'vegan-meal', text: 'Eat a plant-based (vegan) meal today', points: 25, completed: false }
+        ],
+        unlockedBadges: [],
+        scenarioSim: { evShare: 0, dietShift: 0, cleanEnergy: 0, wasteRed: 0 },
+        chatHistory: []
+    };
+    saveStateToLocalStorage();
+    renderAllViews();
+    switchTab("dashboard");
+
+    setTimeout(() => {
+        // Step 2: Go to Calculator
+        updateStatus("Navigating to Calculator...");
+        switchTab("calculator");
+        goToStep(1);
+
+        setTimeout(() => {
+            // Step 3: Populate Transportation inputs
+            updateStatus("Setting transportation inputs...");
+            document.getElementById("input-car-km").value = 250;
+            document.getElementById("input-car-km").dispatchEvent(new Event("input"));
+            document.getElementById("input-car-type").value = "diesel";
+            document.getElementById("input-public-km").value = 80;
+            document.getElementById("input-public-km").dispatchEvent(new Event("input"));
+            document.getElementById("input-flights").value = 1;
+            document.getElementById("input-flights").dispatchEvent(new Event("input"));
+
+            setTimeout(() => {
+                // Next to step 2
+                goToStep(2);
+
+                setTimeout(() => {
+                    // Populate energy/utilities inputs
+                    updateStatus("Setting energy and utility inputs...");
+                    document.getElementById("input-electricity").value = 350;
+                    document.getElementById("input-electricity").dispatchEvent(new Event("input"));
+                    document.getElementById("input-solar").value = "partial";
+                    document.getElementById("input-water").value = 150;
+                    document.getElementById("input-water").dispatchEvent(new Event("input"));
+
+                    setTimeout(() => {
+                        // Next to step 3
+                        goToStep(3);
+
+                        setTimeout(() => {
+                            // Populate Food/diet inputs
+                            updateStatus("Setting dietary choices...");
+                            document.getElementById("input-diet").value = "mixed";
+                            document.getElementById("input-local-food").value = "sometimes";
+                            document.getElementById("input-food-waste").value = "minimal";
+
+                            setTimeout(() => {
+                                // Next to step 4
+                                goToStep(4);
+
+                                setTimeout(() => {
+                                    // Populate Shopping inputs
+                                    updateStatus("Setting shopping & consumption habits...");
+                                    document.getElementById("input-shopping").value = "average";
+                                    document.getElementById("input-recycling").value = "regularly";
+                                    document.getElementById("input-trash").value = "average";
+
+                                    setTimeout(() => {
+                                        // Click submit
+                                        updateStatus("Calculating Carbon Footprint...");
+                                        calculateCarbonFootprint();
+
+                                        setTimeout(() => {
+                                            // Step 4: View Dashboard stats
+                                            updateStatus("Dashboard updated with Green Score & SVG charts!");
+                                            
+                                            setTimeout(() => {
+                                                // Step 5: Switch to Scenario Explorer
+                                                updateStatus("Navigating to Scenario Explorer...");
+                                                switchTab("scenario");
+
+                                                setTimeout(() => {
+                                                    // Slowly slide Clean Energy to 100%
+                                                    updateStatus("Simulating shift to 100% solar energy...");
+                                                    const cleanEnergySlider = document.getElementById("slider-scenario-clean-energy");
+                                                    let val = 0;
+                                                    const interval = setInterval(() => {
+                                                        val += 10;
+                                                        cleanEnergySlider.value = val;
+                                                        // trigger custom formatter label update
+                                                        document.getElementById("scenario-val-clean-energy").textContent = val === 50 ? "50% Solar" : val === 100 ? "100% Solar" : `${val}% Solar`;
+                                                        if (val === 50) cleanEnergySlider.value = 50;
+                                                        if (val === 100) cleanEnergySlider.value = 100;
+                                                        runScenarioSimulation();
+                                                        if (val >= 100) {
+                                                            clearInterval(interval);
+                                                            
+                                                            setTimeout(() => {
+                                                                // Step 6: Go to AI Assistant
+                                                                updateStatus("Navigating to AI Assistant Coach...");
+                                                                switchTab("assistant");
+
+                                                                setTimeout(() => {
+                                                                    // Type query: "How to improve my score?"
+                                                                    updateStatus("Consulting EcoBuddy Coach...");
+                                                                    const userInput = document.getElementById("chat-user-input");
+                                                                    const text = "How to improve my score?";
+                                                                    let idx = 0;
+                                                                    const typingInterval = setInterval(() => {
+                                                                        userInput.value += text[idx];
+                                                                        idx++;
+                                                                        if (idx >= text.length) {
+                                                                            clearInterval(typingInterval);
+                                                                            
+                                                                            setTimeout(() => {
+                                                                                // Click send
+                                                                                userInput.value = "";
+                                                                                sendQuickQuestion(text);
+
+                                                                                setTimeout(() => {
+                                                                                    // Step 7: Go to Eco Challenges
+                                                                                    updateStatus("Navigating to Eco Challenges...");
+                                                                                    switchTab("challenges");
+
+                                                                                    setTimeout(() => {
+                                                                                        // Check off first challenge
+                                                                                        updateStatus("Completing carry-a-water-bottle challenge!");
+                                                                                        toggleChallenge("water-bottle");
+
+                                                                                        setTimeout(() => {
+                                                                                            // Complete autoplay!
+                                                                                            updateStatus("Autoplay finished! Reloading page in 3s...");
+                                                                                            demoOverlay.style.backgroundColor = "hsl(var(--primary-mint))";
+                                                                                            demoOverlay.style.color = "hsl(var(--text-dark))";
+                                                                                            demoOverlay.innerHTML = "🏆 Demo Complete! Reloading...";
+                                                                                            
+                                                                                            setTimeout(() => {
+                                                                                                window.location.href = window.location.pathname;
+                                                                                            }, 3000);
+                                                                                        }, 2500);
+                                                                                    }, 2000);
+                                                                                }, 3000);
+                                                                            }, 1000);
+                                                                        }
+                                                                    }, 100);
+                                                                }, 1500);
+                                                            }, 2000);
+                                                        }
+                                                    }, 150);
+                                                }, 1500);
+                                            }, 2000);
+                                        }, 2000);
+                                    }, 1500);
+                                }, 1500);
+                            }, 1500);
+                        }, 1500);
+                    }, 1500);
+                }, 1500);
+            }, 1500);
+        }, 1500);
+    }, 1500);
 }

@@ -34,9 +34,14 @@ Here are the key views of the CarbonTrack AI interface:
 
 ---
 
-## 🎬 Recommended Evaluation Flow (Demo Video / Live Test Guide)
+## 🎬 Recommended Evaluation Flow (Autoplay Demo Tour / Live Test Guide)
 
-To experience the full capability of the application in under 3 minutes:
+To make it incredibly easy for evaluators to review the full user journey, we built an **Auto-Play Interactive Tour** directly into the application! 
+
+*   🚀 **Run the Autoplay Demo Live:** Simply visit [https://carbontrack-ai-224296733729.us-central1.run.app/?demo=autoplay](https://carbontrack-ai-224296733729.us-central1.run.app/?demo=autoplay)
+*   **What it does:** The application runs a self-guided walkthrough—automatically navigating to the **Calculator**, filling out lifestyle inputs step-by-step, generating the **Dashboard** charts/equivalents, simulating solar shifts in the **Scenario Explorer**, typing character-by-character to **EcoBuddy Coach**, completing **Eco Challenges**, and reloading to demonstrate persistence!
+
+Alternatively, you can test it manually:
 
 1. **Calculate Footprint:** Go to the **Calculator** tab, input lifestyle factors, and complete the calculation.
 2. **View Dashboard:** Inspect your dynamic **Green Score**, equivalents, breakdown pie chart, and **30-Day Reduction Roadmap**.
