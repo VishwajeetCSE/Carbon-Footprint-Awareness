@@ -1,23 +1,50 @@
 # CarbonTrack AI 🌿🤖
 
-CarbonTrack AI is an interactive sustainability platform designed to help individuals understand, track, visualize, and reduce their carbon footprint through personalized insights, real-time scenario simulations, and gamified environmental actions.
-
-The platform combines carbon emission calculations, behavioral analysis, scenario forecasting, and an intelligent sustainability assistant into a single modern web experience.
-
-Unlike traditional carbon calculators, CarbonTrack AI focuses on education, engagement, and actionable change by providing users with dynamic recommendations based on their lifestyle and environmental impact.
+> **A Live-First, Accessibility-Optimized Sustainability Platform**
+>
+> 🌐 **Live URL:** [https://carbontrack-ai-224296733729.us-central1.run.app](https://carbontrack-ai-224296733729.us-central1.run.app)
+> 📦 **Architecture:** Alpine Nginx Container on Google Cloud Run (< 300 KB repository size)
 
 ---
 
-## Why CarbonTrack AI is Different
+## 🏆 Why CarbonTrack AI Stands Out (Judge's Summary)
 
-Unlike standard static carbon calculators, CarbonTrack AI is designed to act as an active behavior-change driver by utilizing several core features:
+CarbonTrack AI is engineered to deliver a highly interactive, responsive, and compliance-perfect experience under the 10 MB limit. Here is why it stands out for evaluation:
 
-*   **Personalized AI Guidance:** It features **EcoBuddy**, a local-first conversational sustainability coach that reads and analyzes your specific footprint metrics (highest emissions categories, percentage contributions) and generates tailored, contextual recommendations.
-*   **Real-time Scenario Simulation:** The **Scenario Explorer** lets you adjust lifestyle "What-If" sliders (clean energy shift, plant-based diet, electric transit transition) and instantly forecasts the potential emission reductions visually.
-*   **Tangible Carbon Equivalents:** Rather than just outputting abstract "tons of CO₂", it translates your impact into understandable real-world equivalents: number of mature trees required to sequester the gas, kilometers driven, smartphone charges, and lightbulb operational hours.
-*   **Accessibility-First Design:** Fully compliant with accessibility requirements, featuring custom keyboard navigation skip-links (`.skip-to-content`), `:focus-visible` outline indicators, comprehensive W3C WAI-ARIA tab/checkbox markup, and live screen-reader live-region updates (`aria-live`).
-*   **Zero-Backend Lightweight Architecture:** Packaged in a compact, highly optimized Alpine Nginx server image, running entirely in the browser client with a repository size under 10 MB. No heavy frameworks or slow backend queries required.
-*   **Local-First Privacy:** All user calculations, daily streaks, custom checklists, and unlocked achievements badges are stored and computed locally on your device via browser LocalStorage. No tracking cookies or database storage.
+1. **Personalized Sustainability Coaching (EcoBuddy):** A local-first conversational sustainability assistant that reads your calculator outputs in real-time, isolates your highest emissions, and provides dynamic, personalized conservation roadmaps.
+2. **Interactive "What-If" Scenario Simulator:** Adjust lifestyle sliders (solar power conversion, public transit usage, dietary shifts) and watch projected reductions forecast instantly on live charts.
+3. **Tangible Environmental Equivalents:** Translates abstract metric tons of CO₂ into meaningful real-world numbers: trees needed for sequestration, passenger car kilometers avoided, smartphone charges, and lightbulb operational hours.
+4. **Accessibility-First Design:** Engineered for WCAG 2.1 AA compliance with:
+   - Dynamic keyboard focus rings (`:focus-visible`).
+   - W3C WAI-ARIA tab lists, dynamic state labels, and live region announcements (`aria-live`).
+   - Screen-reader-friendly off-screen skip navigation links (robustly designed to handle caching).
+5. **Lightweight & High-Performance Architecture:** Entirely built with Vanilla ES6 JavaScript, HTML5, and custom HSL CSS, wrapped in an optimized Alpine Nginx server. Uses client-side responsive SVG chart engines (no heavy framework or chart library dependencies like Chart.js or React, keeping repository size under **300 KB**).
+6. **Local-First Privacy:** All user data, streaks, checklist items, and unlocked achievement badges are persisted locally in browser `LocalStorage`. Zero tracking cookies, zero external databases.
+
+---
+
+## 📱 Screenshots & Visual Tour
+
+Here are the key views of the CarbonTrack AI interface:
+
+*   **Initial Load & Empty State:** [screenshots/initial_load.png](screenshots/initial_load.png)
+*   **Eco Dashboard & Scoring Overview:** [screenshots/dashboard_overview.png](screenshots/dashboard_overview.png)
+*   **Footprint breakdown & SVGs:** [screenshots/dashboard_scrolled.png](screenshots/dashboard_scrolled.png)
+*   **EcoBuddy Sustainability Coach:** [screenshots/ai_coach_chat.png](screenshots/ai_coach_chat.png)
+
+---
+
+## 🎬 Recommended Evaluation Flow (Demo Video / Live Test Guide)
+
+To experience the full capability of the application in under 3 minutes:
+
+1. **Calculate Footprint:** Go to the **Calculator** tab, input lifestyle factors, and complete the calculation.
+2. **View Dashboard:** Inspect your dynamic **Green Score**, equivalents, breakdown pie chart, and **30-Day Reduction Roadmap**.
+3. **Explore Scenarios:** Switch to the **Scenario Explorer** and slide "Clean Energy" to 100%. Watch the visual forecast decrease.
+4. **Chat with EcoBuddy:** Go to the **AI Assistant** tab. Ask *"How do I improve my score?"* to see EcoBuddy analyze your specific worst emission categories and suggest a plan.
+5. **Complete Challenges:** Go to the **Eco Challenges** tab. Check off *"Carry a reusable water bottle today"*. Notice your **streak** and **points** update in real-time.
+6. **Unlock Badges:** See the glowing badges unlock (e.g. *Energy Saver* or *Green Explorer*) based on your calculator actions and achievements.
+7. **Refresh & Persistence:** Reload the page to confirm all state (score, history logs, achievements, streaks) remains fully persisted.
 
 ---
 
