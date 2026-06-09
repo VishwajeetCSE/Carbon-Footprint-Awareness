@@ -94,13 +94,54 @@ const BADGES = [
     { id: 'climate-champion', name: 'Climate Champion', desc: 'Earned a Green Score of 75+ or completed all challenges.', icon: 'award', color: 'gold' }
 ];
 
-// --- Initialization & Page Loading ---
 document.addEventListener("DOMContentLoaded", () => {
+    // Check if URL has ?demo=true to auto-populate mock data for screenshots and testing
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("demo") === "true") {
+        appState = {
+            hasCalculated: true,
+            calculatedEmissions: { transport: 1.6, energy: 2.6, food: 2.7, shopping: 0.3, total: 7.2 },
+            greenScore: 45,
+            dailyStreak: 3,
+            lastLoginDate: new Date().toDateString(),
+            greenPoints: 120,
+            challenges: [
+                { id: 'water-bottle', text: 'Carry a reusable water bottle today', points: 15, completed: true },
+                { id: 'no-plastic', text: 'Avoid all single-use plastic packaging', points: 20, completed: false },
+                { id: 'public-transit', text: 'Use public transport, bike, or walk', points: 30, completed: false },
+                { id: 'unplug-devices', text: 'Unplug idle electronics and turn off lights', points: 20, completed: true },
+                { id: 'vegan-meal', text: 'Eat a plant-based (vegan) meal today', points: 25, completed: false }
+            ],
+            unlockedBadges: ['eco-beginner', 'energy-saver'],
+            scenarioSim: { evShare: 40, dietShift: 50, cleanEnergy: 100, wasteRed: 20 },
+            chatHistory: [
+                { sender: 'user', text: 'How do I improve my score?' },
+                { sender: 'system', text: 'Your current Carbon Footprint is **7.2 tons CO₂e** per year, giving you a Green Score of **45/100**.\n\nYour highest source of emissions is **Diet & Food Habits**, contributing **2.7 tons** (approx. **38%** of your total emissions). To make the fastest impact, I suggest you try incorporating more plant-based meals, reducing weekly red meat intake, and sourcing ingredients from local food hubs.' }
+            ]
+        };
+        // Add calculation history for the trend line chart
+        appState.calculationHistory = [
+            { date: '06/05/2026', footprint: 9.8 },
+            { date: '06/06/2026', footprint: 8.9 },
+            { date: '06/07/2026', footprint: 8.0 },
+            { date: '06/08/2026', footprint: 7.2 }
+        ];
+        localStorage.setItem("carbontrack_ai_state", JSON.stringify(appState));
+    }
+
     loadStateFromLocalStorage();
     initializeUIElements();
     updateEcoStreak();
     renderAllViews();
     lucide.createIcons();
+
+    // Check if tab parameter is specified to auto-navigate
+    const tabParam = urlParams.get("tab");
+    if (tabParam) {
+        setTimeout(() => {
+            switchTab(tabParam);
+        }, 100);
+    }
 });
 
 // Setup UI Tab Navs, Event Listeners, and Range Value Syncs
