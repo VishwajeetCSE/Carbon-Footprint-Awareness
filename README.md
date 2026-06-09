@@ -36,6 +36,7 @@ The application calculates estimated annual carbon emissions using predefined em
 ### 2. Interactive Dashboard
 Provides a visual representation of user impact through:
 * Carbon breakdown pie chart (dynamic donut)
+* **Emissions Trend Chart** (dynamic SVG line graph mapping calculation runs history over time)
 * Reduction target progress bar (calculated against average benchmarks)
 * Environmental equivalents display (trees grown, car km avoided, smartphones charged, LED bulbs run)
 * Sustainability score meter & Category rating (Eco Champion, Green Explorer, etc.)
