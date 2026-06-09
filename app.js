@@ -81,7 +81,8 @@ let appState = {
         cleanEnergy: 0,
         wasteRed: 0
     },
-    chatHistory: []
+    chatHistory: [],
+    history: []
 };
 
 // Badges Library
@@ -321,6 +322,35 @@ function calculateCarbonFootprint() {
         unlockBadge('climate-champion');
     }
 
+    // Update calculation history
+    if (!appState.history) {
+        appState.history = [];
+    }
+    
+    // Check if this is the first calculation to pre-populate simulated trend
+    if (appState.history.length === 0) {
+        const dateNow = new Date();
+        const date2Wk = new Date(dateNow.getTime() - 14 * 24 * 60 * 60 * 1000);
+        const date4Wk = new Date(dateNow.getTime() - 28 * 24 * 60 * 60 * 1000);
+        
+        const formatOptions = { month: 'short', day: 'numeric' };
+        
+        appState.history = [
+            { date: date4Wk.toLocaleDateString(undefined, formatOptions), footprint: Number((totalFootprint * 1.35).toFixed(2)) },
+            { date: date2Wk.toLocaleDateString(undefined, formatOptions), footprint: Number((totalFootprint * 1.18).toFixed(2)) },
+            { date: dateNow.toLocaleDateString(undefined, formatOptions), footprint: Number(totalFootprint.toFixed(2)) }
+        ];
+    } else {
+        // Add new point
+        appState.history.push({
+            date: new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+            footprint: Number(totalFootprint.toFixed(2))
+        });
+        if (appState.history.length > 7) {
+            appState.history.shift();
+        }
+    }
+
     saveStateToLocalStorage();
     renderAllViews();
     switchTab("dashboard");
@@ -409,6 +439,9 @@ function renderDashboard() {
 
     // Draw Pie Chart
     renderPieChart();
+
+    // Draw Trend Chart
+    renderTrendLineChart();
 
     // Render Daily checklist list on Dashboard
     renderMiniChecklist();
@@ -509,6 +542,187 @@ function renderPieChart() {
     innerCircle.setAttribute("r", "45");
     innerCircle.setAttribute("fill", "hsl(var(--bg-surface))");
     pieSvg.appendChild(innerCircle);
+}
+
+function renderTrendLineChart() {
+    const trendSvg = document.getElementById("trend-line-chart");
+    const legend = document.getElementById("trend-chart-legend");
+    if (!trendSvg || !legend) return;
+
+    // Clear contents
+    trendSvg.innerHTML = "";
+    legend.innerHTML = "";
+
+    const history = appState.history || [];
+
+    if (history.length === 0) {
+        legend.innerHTML = `<div class="legend-placeholder">No history data available. Complete calculations to log points.</div>`;
+        return;
+    }
+
+    const w = 300;
+    const h = 140;
+    const padL = 30;
+    const padR = 15;
+    const padT = 15;
+    const padB = 25;
+    
+    const plotW = w - padL - padR;
+    const plotH = h - padT - padB;
+
+    const footprints = history.map(pt => pt.footprint);
+    let maxVal = Math.max(...footprints);
+    let minVal = Math.min(...footprints);
+    
+    // Safety margin to prevent scaling collapse
+    if (maxVal === minVal) {
+        maxVal += 2.0;
+        minVal = Math.max(0, minVal - 2.0);
+    } else {
+        const margin = (maxVal - minVal) * 0.2;
+        maxVal += margin;
+        minVal = Math.max(0, minVal - margin);
+    }
+
+    // Set SVG definitions (Gradients and Glow filters)
+    const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+    defs.innerHTML = `
+        <linearGradient id="trend-grad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="hsl(var(--primary-mint))" stop-opacity="0.3" />
+            <stop offset="100%" stop-color="hsl(var(--primary-mint))" stop-opacity="0.0" />
+        </linearGradient>
+        <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>
+    `;
+    trendSvg.appendChild(defs);
+
+    // Draw horizontal grid lines and labels
+    const gridLinesCount = 3;
+    for (let i = 0; i < gridLinesCount; i++) {
+        const ratio = i / (gridLinesCount - 1);
+        const yVal = maxVal - ratio * (maxVal - minVal);
+        const yPos = padT + ratio * plotH;
+
+        // Draw dashed grid lines
+        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        line.setAttribute("x1", padL);
+        line.setAttribute("y1", yPos);
+        line.setAttribute("x2", w - padR);
+        line.setAttribute("y2", yPos);
+        line.setAttribute("stroke", "rgba(255, 255, 255, 0.05)");
+        line.setAttribute("stroke-dasharray", "3,3");
+        trendSvg.appendChild(line);
+
+        // Draw Y labels
+        const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        text.setAttribute("x", padL - 8);
+        text.setAttribute("y", yPos + 3);
+        text.setAttribute("fill", "hsla(var(--text-primary), 0.4)");
+        text.setAttribute("font-size", "7");
+        text.setAttribute("text-anchor", "end");
+        text.textContent = `${yVal.toFixed(1)}T`;
+        trendSvg.appendChild(text);
+    }
+
+    // Generate point coordinates
+    const coords = [];
+    const n = history.length;
+    
+    history.forEach((pt, idx) => {
+        const x = n > 1 ? padL + (idx / (n - 1)) * plotW : padL + plotW / 2;
+        const y = padT + (1 - (pt.footprint - minVal) / (maxVal - minVal)) * plotH;
+        coords.push({ x, y, date: pt.date, footprint: pt.footprint });
+    });
+
+    // Draw area path under the trend line
+    if (coords.length > 0) {
+        let areaD = `M ${coords[0].x} ${padT + plotH}`;
+        coords.forEach(coord => {
+            areaD += ` L ${coord.x} ${coord.y}`;
+        });
+        areaD += ` L ${coords[coords.length - 1].x} ${padT + plotH} Z`;
+
+        const areaPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        areaPath.setAttribute("d", areaD);
+        areaPath.setAttribute("fill", "url(#trend-grad)");
+        trendSvg.appendChild(areaPath);
+    }
+
+    // Draw main line path
+    if (coords.length > 1) {
+        let lineD = `M ${coords[0].x} ${coords[0].y}`;
+        for (let i = 1; i < coords.length; i++) {
+            lineD += ` L ${coords[i].x} ${coords[i].y}`;
+        }
+
+        const linePath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        linePath.setAttribute("d", lineD);
+        linePath.setAttribute("fill", "none");
+        linePath.setAttribute("stroke", "hsl(var(--primary-mint))");
+        linePath.setAttribute("stroke-width", "2.5");
+        linePath.setAttribute("stroke-linecap", "round");
+        linePath.setAttribute("filter", "url(#glow)");
+        trendSvg.appendChild(linePath);
+    }
+
+    // Draw X labels (Dates)
+    coords.forEach(coord => {
+        const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        text.setAttribute("x", coord.x);
+        text.setAttribute("y", h - 8);
+        text.setAttribute("fill", "hsla(var(--text-primary), 0.4)");
+        text.setAttribute("font-size", "7");
+        text.setAttribute("text-anchor", "middle");
+        text.textContent = coord.date;
+        trendSvg.appendChild(text);
+    });
+
+    // Default legend message
+    legend.innerHTML = `<p class="text-muted text-xs text-center">Current Footprint: <span class="text-emerald font-bold">${appState.calculatedEmissions.total} Tons</span>. Hover over plot points to inspect history.</p>`;
+
+    // Draw interactive circles at points
+    coords.forEach((coord, idx) => {
+        const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        dot.setAttribute("cx", coord.x);
+        dot.setAttribute("cy", coord.y);
+        dot.setAttribute("r", "4");
+        dot.setAttribute("fill", "#ffffff");
+        dot.setAttribute("stroke", "hsl(var(--primary-mint))");
+        dot.setAttribute("stroke-width", "2");
+        dot.style.cursor = "pointer";
+        dot.style.transition = "transform 0.1s ease";
+
+        dot.addEventListener("mouseenter", () => {
+            dot.setAttribute("r", "6");
+            dot.setAttribute("fill", "hsl(var(--primary-mint))");
+            dot.setAttribute("stroke", "#ffffff");
+            
+            const diffText = idx > 0 ? getDiffExplanation(coord.footprint, coords[idx - 1].footprint) : "Initial logged calculation.";
+            legend.innerHTML = `<p class="text-center text-xs"><strong class="text-emerald">${coord.date}</strong>: <strong>${coord.footprint.toFixed(2)} Tons CO₂e</strong>. <span class="text-muted">${diffText}</span></p>`;
+        });
+
+        dot.addEventListener("mouseleave", () => {
+            dot.setAttribute("r", "4");
+            dot.setAttribute("fill", "#ffffff");
+            dot.setAttribute("stroke", "hsl(var(--primary-mint))");
+            legend.innerHTML = `<p class="text-muted text-xs text-center">Current Footprint: <span class="text-emerald font-bold">${appState.calculatedEmissions.total} Tons</span>. Hover over plot points to inspect history.</p>`;
+        });
+
+        trendSvg.appendChild(dot);
+    });
+}
+
+function getDiffExplanation(curr, prev) {
+    const diff = curr - prev;
+    if (diff < 0) {
+        return `Reduced footprint by ${Math.abs(diff).toFixed(2)} tons! 🎉`;
+    } else if (diff > 0) {
+        return `Increased footprint by ${diff.toFixed(2)} tons. ⚠️`;
+    } else {
+        return `No change since previous calculation.`;
+    }
 }
 
 function renderMiniChecklist() {

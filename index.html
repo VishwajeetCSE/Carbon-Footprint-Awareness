@@ -28,24 +28,24 @@
                 </div>
             </div>
 
-            <nav class="nav-menu">
-                <a href="#" class="nav-item active" data-tab="dashboard" id="tab-dashboard-btn">
+            <nav class="nav-menu" role="tablist" aria-label="Application Tabs">
+                <a href="#" class="nav-item active" data-tab="dashboard" id="tab-dashboard-btn" role="tab" aria-selected="true" aria-controls="tab-dashboard">
                     <i data-lucide="layout-dashboard"></i>
                     <span>Dashboard</span>
                 </a>
-                <a href="#" class="nav-item" data-tab="calculator" id="tab-calculator-btn">
+                <a href="#" class="nav-item" data-tab="calculator" id="tab-calculator-btn" role="tab" aria-selected="false" aria-controls="tab-calculator">
                     <i data-lucide="calculator"></i>
                     <span>Calculator</span>
                 </a>
-                <a href="#" class="nav-item" data-tab="scenario" id="tab-scenario-btn">
+                <a href="#" class="nav-item" data-tab="scenario" id="tab-scenario-btn" role="tab" aria-selected="false" aria-controls="tab-scenario">
                     <i data-lucide="sliders"></i>
                     <span>Scenario Explorer</span>
                 </a>
-                <a href="#" class="nav-item" data-tab="assistant" id="tab-assistant-btn">
+                <a href="#" class="nav-item" data-tab="assistant" id="tab-assistant-btn" role="tab" aria-selected="false" aria-controls="tab-assistant">
                     <i data-lucide="bot"></i>
                     <span>AI Assistant</span>
                 </a>
-                <a href="#" class="nav-item" data-tab="challenges" id="tab-challenges-btn">
+                <a href="#" class="nav-item" data-tab="challenges" id="tab-challenges-btn" role="tab" aria-selected="false" aria-controls="tab-challenges">
                     <i data-lucide="award"></i>
                     <span>Eco Challenges</span>
                 </a>
@@ -85,7 +85,7 @@
             </div>
 
             <!-- TAB 1: DASHBOARD -->
-            <section id="tab-dashboard" class="tab-panel active">
+            <section id="tab-dashboard" class="tab-panel active" role="tabpanel" aria-labelledby="tab-dashboard-btn">
                 <header class="panel-header">
                     <div>
                         <h1>Eco Dashboard</h1>
@@ -164,18 +164,25 @@
                         </div>
                     </div>
 
-                    <!-- Reductions Trend Line Chart -->
+                    <!-- Historical Emissions Trend Chart -->
                     <div class="dashboard-card glass-card span-6 chart-card">
-                        <h3>30-Day Reduction Roadmap</h3>
-                        <div class="roadmap-stages" id="dashboard-roadmap-container">
-                            <div class="roadmap-placeholder">Your personalized 30-day roadmap will appear here once you run the footprint calculator.</div>
+                        <h3>Emissions Trend</h3>
+                        <div class="chart-flex" style="flex-direction: column; align-items: stretch; width: 100%;">
+                            <div class="chart-svg-container" style="width: 100%; height: 140px; position: relative;">
+                                <svg id="trend-line-chart" viewBox="0 0 300 140" width="100%" height="100%">
+                                    <!-- Dynamic Line and Points added by JS -->
+                                </svg>
+                            </div>
+                            <div class="chart-legend" id="trend-chart-legend" style="width: 100%;">
+                                <div class="legend-placeholder">No history data available. Complete calculations to log points.</div>
+                            </div>
                         </div>
                     </div>
 
                     <!-- Environmental Equivalents -->
-                    <div class="dashboard-card glass-card span-12 equivalents-card">
+                    <div class="dashboard-card glass-card span-6 equivalents-card">
                         <h3>Environmental Equivalents</h3>
-                        <p class="text-muted text-sm mb-4">Your calculated savings or carbon consumption is equivalent to:</p>
+                        <p class="text-muted text-xs mb-4">Your calculated savings or carbon consumption is equivalent to:</p>
                         <div class="equivalents-grid">
                             <div class="eq-item">
                                 <div class="eq-icon-wrapper text-emerald">
@@ -183,7 +190,7 @@
                                 </div>
                                 <div class="eq-text">
                                     <h4 id="eq-trees">0</h4>
-                                    <p>Seedlings Grown for 10 Years</p>
+                                    <p>Trees Sequest.</p>
                                 </div>
                             </div>
                             <div class="eq-item">
@@ -192,7 +199,7 @@
                                 </div>
                                 <div class="eq-text">
                                     <h4 id="eq-car-km">0 km</h4>
-                                    <p>Driving Avoided (Average Petrol Car)</p>
+                                    <p>Driving Avoided</p>
                                 </div>
                             </div>
                             <div class="eq-item">
@@ -201,7 +208,7 @@
                                 </div>
                                 <div class="eq-text">
                                     <h4 id="eq-smartphones">0</h4>
-                                    <p>Smartphones Charged</p>
+                                    <p>Phones Charged</p>
                                 </div>
                             </div>
                             <div class="eq-item">
@@ -210,16 +217,24 @@
                                 </div>
                                 <div class="eq-text">
                                     <h4 id="eq-bulbs">0</h4>
-                                    <p>LED Bulbs Run for 1 Year</p>
+                                    <p>Bulbs Run/Yr</p>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Reductions Trend Line Chart (Roadmap) -->
+                    <div class="dashboard-card glass-card span-6 chart-card">
+                        <h3>30-Day Reduction Roadmap</h3>
+                        <div class="roadmap-stages" id="dashboard-roadmap-container">
+                            <div class="roadmap-placeholder">Your personalized 30-day roadmap will appear here once you run the footprint calculator.</div>
                         </div>
                     </div>
                 </div>
             </section>
 
             <!-- TAB 2: CALCULATOR -->
-            <section id="tab-calculator" class="tab-panel hidden">
+            <section id="tab-calculator" class="tab-panel hidden" role="tabpanel" aria-labelledby="tab-calculator-btn">
                 <header class="panel-header">
                     <div>
                         <h1>Carbon Footprint Calculator</h1>
@@ -260,7 +275,7 @@
                                     <label for="input-car-km">Personal Car Mileage (Weekly km)</label>
                                     <span class="value-display" id="val-car-km">0 km</span>
                                 </div>
-                                <input type="range" class="form-range" id="input-car-km" min="0" max="800" value="120" step="10">
+                                <input type="range" class="form-range" id="input-car-km" min="0" max="800" value="120" step="10" aria-label="Weekly car distance in kilometers">
                                 <div class="range-legend"><span>0 km (No car)</span><span>800 km</span></div>
                             </div>
 
@@ -279,7 +294,7 @@
                                     <label for="input-public-km">Public Transit (Weekly km - Bus/Train)</label>
                                     <span class="value-display" id="val-public-km">0 km</span>
                                 </div>
-                                <input type="range" class="form-range" id="input-public-km" min="0" max="500" value="50" step="5">
+                                <input type="range" class="form-range" id="input-public-km" min="0" max="500" value="50" step="5" aria-label="Weekly public transit distance in kilometers">
                                 <div class="range-legend"><span>0 km</span><span>500 km</span></div>
                             </div>
 
@@ -288,7 +303,7 @@
                                     <label for="input-flights">Air Travel (Annual Flights Taken)</label>
                                     <span class="value-display" id="val-flights">0 Flights</span>
                                 </div>
-                                <input type="range" class="form-range" id="input-flights" min="0" max="20" value="2" step="1">
+                                <input type="range" class="form-range" id="input-flights" min="0" max="20" value="2" step="1" aria-label="Annual flights taken">
                                 <div class="range-legend"><span>0 (None)</span><span>20 flights</span></div>
                             </div>
 
@@ -308,7 +323,7 @@
                                     <label for="input-electricity">Electricity Consumption (Monthly kWh)</label>
                                     <span class="value-display" id="val-electricity">0 kWh</span>
                                 </div>
-                                <input type="range" class="form-range" id="input-electricity" min="0" max="1000" value="250" step="10">
+                                <input type="range" class="form-range" id="input-electricity" min="0" max="1000" value="250" step="10" aria-label="Monthly electricity consumption in kilowatt hours">
                                 <div class="range-legend"><span>0 kWh</span><span>1000 kWh</span></div>
                             </div>
 
@@ -326,7 +341,7 @@
                                     <label for="input-water">Daily Water Consumption (Liters per person)</label>
                                     <span class="value-display" id="val-water">0 L</span>
                                 </div>
-                                <input type="range" class="form-range" id="input-water" min="0" max="400" value="150" step="10">
+                                <input type="range" class="form-range" id="input-water" min="0" max="400" value="150" step="10" aria-label="Daily water usage in liters">
                                 <div class="range-legend"><span>0 L (Eco Conscious)</span><span>400 L</span></div>
                             </div>
 
@@ -410,7 +425,7 @@
             </section>
 
             <!-- TAB 3: SCENARIO EXPLORER -->
-            <section id="tab-scenario" class="tab-panel hidden">
+            <section id="tab-scenario" class="tab-panel hidden" role="tabpanel" aria-labelledby="tab-scenario-btn">
                 <header class="panel-header">
                     <div>
                         <h1>Scenario Explorer</h1>
@@ -428,7 +443,7 @@
                                 <span>Switch to Electric Transit</span>
                                 <span class="value-display text-emerald" id="scenario-val-ev">0% EV</span>
                             </div>
-                            <input type="range" class="form-range" id="slider-scenario-ev" min="0" max="100" value="0" step="10">
+                            <input type="range" class="form-range" id="slider-scenario-ev" min="0" max="100" value="0" step="10" aria-label="Simulate electric transit shift percentage">
                             <div class="range-legend"><span>Keep Gas Engine</span><span>100% Electric</span></div>
                         </div>
 
@@ -437,7 +452,7 @@
                                 <span>Diet Shift to Plant-Based</span>
                                 <span class="value-display text-emerald" id="scenario-val-diet">0% Shift</span>
                             </div>
-                            <input type="range" class="form-range" id="slider-scenario-diet" min="0" max="100" value="0" step="25">
+                            <input type="range" class="form-range" id="slider-scenario-diet" min="0" max="100" value="0" step="25" aria-label="Simulate plant-based diet shift percentage">
                             <div class="range-legend"><span>Current Diet</span><span>Fully Plant-Based</span></div>
                         </div>
 
@@ -446,7 +461,7 @@
                                 <span>Switch Home to Clean Energy</span>
                                 <span class="value-display text-emerald" id="scenario-val-clean-energy">Current Grid</span>
                             </div>
-                            <input type="range" class="form-range" id="slider-scenario-clean-energy" min="0" max="100" value="0" step="50">
+                            <input type="range" class="form-range" id="slider-scenario-clean-energy" min="0" max="100" value="0" step="50" aria-label="Simulate clean solar energy percentage">
                             <div class="range-legend"><span>Fossil Fuel Grid</span><span>100% Solar/Renewable</span></div>
                         </div>
 
@@ -455,7 +470,7 @@
                                 <span>Reduce Shopping & Waste</span>
                                 <span class="value-display text-emerald" id="scenario-val-waste">0% Reduction</span>
                             </div>
-                            <input type="range" class="form-range" id="slider-scenario-waste" min="0" max="50" value="0" step="10">
+                            <input type="range" class="form-range" id="slider-scenario-waste" min="0" max="50" value="0" step="10" aria-label="Simulate shopping waste reduction percentage">
                             <div class="range-legend"><span>No change</span><span>50% less waste</span></div>
                         </div>
                     </div>
@@ -505,7 +520,7 @@
             </section>
 
             <!-- TAB 4: AI SUSTAINABILITY ASSISTANT -->
-            <section id="tab-assistant" class="tab-panel hidden">
+            <section id="tab-assistant" class="tab-panel hidden" role="tabpanel" aria-labelledby="tab-assistant-btn">
                 <header class="panel-header">
                     <div>
                         <h1>AI Carbon Coach</h1>
@@ -559,7 +574,7 @@
             </section>
 
             <!-- TAB 5: ECO CHALLENGES -->
-            <section id="tab-challenges" class="tab-panel hidden">
+            <section id="tab-challenges" class="tab-panel hidden" role="tabpanel" aria-labelledby="tab-challenges-btn">
                 <header class="panel-header">
                     <div>
                         <h1>Eco Challenges & Achievements</h1>
