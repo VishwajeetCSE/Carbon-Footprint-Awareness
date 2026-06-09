@@ -155,6 +155,24 @@ Total Emissions = Transportation + Home Energy + Diet & Food + Consumption & Sho
 
 ---
 
+## 🧠 Approach, Logic, and Assumptions
+
+### Technical Approach & Design Philosophy
+* **Zero-Backend Single Page Application (SPA):** The platform is designed to run completely on the client side. State management is done in-memory via a global JavaScript object and persisted to the browser's `LocalStorage`. This avoids any server-side database latency, protects user privacy, and minimizes container size.
+* **Inline Dynamic SVG Rendering:** Rather than loading heavy external charting libraries (like D3 or Chart.js) which would blow up the repository size, all visual elements (such as the Green Score donut gauge and the Emissions Trend history line graph) are drawn dynamically using inline SVGs manipulated directly by JavaScript.
+
+### Core Mathematical Logic
+* **Carbon Calculator:** Multiplies user-selected inputs (kilometers, kWh, etc.) by standard emission coefficients. The outputs are dynamically grouped into 4 main categories (Transport, Home Energy, Food, and Shopping) and summed up to calculate the total annual footprint.
+* **Green Score formula:** Evaluated out of 100 based on standard offsets. A score of 100 represents a near-zero carbon footprint, while a score of 0 represents emissions exceeding 15 tons/year.
+
+### Assumptions Made
+1. **Annualization:** Commute distances (car and transit) are entered by users as weekly averages and multiplied by 52 to calculate annual figures. Electricity consumption is entered as monthly kWh and multiplied by 12.
+2. **Solar Efficiency:** A partial solar panel discount is assumed to offset 50% of grid emissions, and full solar offsets 100%.
+3. **Food Lifecycle Baselines:** Dietary footprints (e.g. 2.8 tons CO₂e baseline for heavy meat eaters) are estimated based on lifecycle greenhouse gas emissions from agriculture, processing, and distribution. Sourcing local food is assumed to reduce the diet footprint by up to 25%.
+4. **Upstream Manufacture Impact:** Shopping and waste baselines represent average upstream industrial manufacture footprints (from low eco-conscious consumers at 0.3T to high consumers at 1.9T). Recycling is assumed to offset up to 15% of the shopping footprint.
+
+---
+
 ## Accessibility & Security
 * **Accessibility**: Semantic HTML structures, keyboard navigation focus rings, contrast-compliant dark mode styling, and screen-reader labels.
 * **Security**: Absolute user privacy. No tracking cookies, no server-side databases, and no login authentication required.
