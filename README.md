@@ -8,6 +8,19 @@ Unlike traditional carbon calculators, CarbonTrack AI focuses on education, enga
 
 ---
 
+## Why CarbonTrack AI is Different
+
+Unlike standard static carbon calculators, CarbonTrack AI is designed to act as an active behavior-change driver by utilizing several core features:
+
+*   **Personalized AI Guidance:** It features **EcoBuddy**, a local-first conversational sustainability coach that reads and analyzes your specific footprint metrics (highest emissions categories, percentage contributions) and generates tailored, contextual recommendations.
+*   **Real-time Scenario Simulation:** The **Scenario Explorer** lets you adjust lifestyle "What-If" sliders (clean energy shift, plant-based diet, electric transit transition) and instantly forecasts the potential emission reductions visually.
+*   **Tangible Carbon Equivalents:** Rather than just outputting abstract "tons of CO₂", it translates your impact into understandable real-world equivalents: number of mature trees required to sequester the gas, kilometers driven, smartphone charges, and lightbulb operational hours.
+*   **Accessibility-First Design:** Fully compliant with accessibility requirements, featuring custom keyboard navigation skip-links (`.skip-to-content`), `:focus-visible` outline indicators, comprehensive W3C WAI-ARIA tab/checkbox markup, and live screen-reader live-region updates (`aria-live`).
+*   **Zero-Backend Lightweight Architecture:** Packaged in a compact, highly optimized Alpine Nginx server image, running entirely in the browser client with a repository size under 10 MB. No heavy frameworks or slow backend queries required.
+*   **Local-First Privacy:** All user calculations, daily streaks, custom checklists, and unlocked achievements badges are stored and computed locally on your device via browser LocalStorage. No tracking cookies or database storage.
+
+---
+
 ## Chosen Vertical
 **Individual Sustainability & Climate Awareness**
 

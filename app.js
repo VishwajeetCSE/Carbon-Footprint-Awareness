@@ -182,8 +182,10 @@ function switchTab(tabId) {
     navItems.forEach(item => {
         if (item.getAttribute("data-tab") === tabId) {
             item.classList.add("active");
+            item.setAttribute("aria-selected", "true");
         } else {
             item.classList.remove("active");
+            item.setAttribute("aria-selected", "false");
         }
     });
 
@@ -207,7 +209,7 @@ function updateEcoStreak() {
     } else {
         const lastLogin = new Date(appState.lastLoginDate);
         const diffTime = Math.abs(new Date(today) - lastLogin);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
         
         if (diffDays === 1) {
             appState.dailyStreak += 1;
@@ -556,6 +558,12 @@ function renderTrendLineChart() {
     const history = appState.history || [];
 
     if (history.length === 0) {
+        trendSvg.innerHTML = `
+            <line x1="30" y1="15" x2="285" y2="15" stroke="rgba(255,255,255,0.03)" stroke-dasharray="3,3" />
+            <line x1="30" y1="65" x2="285" y2="65" stroke="rgba(255,255,255,0.03)" stroke-dasharray="3,3" />
+            <line x1="30" y1="115" x2="285" y2="115" stroke="rgba(255,255,255,0.03)" stroke-dasharray="3,3" />
+            <text x="157" y="70" fill="hsla(var(--text-primary), 0.15)" font-size="8" text-anchor="middle">Awaiting calculations...</text>
+        `;
         legend.innerHTML = `<div class="legend-placeholder">No history data available. Complete calculations to log points.</div>`;
         return;
     }
@@ -735,6 +743,10 @@ function renderMiniChecklist() {
     appState.challenges.slice(0, 3).forEach(challenge => {
         const item = document.createElement("div");
         item.className = `mini-check-item ${challenge.completed ? 'completed' : ''}`;
+        item.setAttribute("tabindex", "0");
+        item.setAttribute("role", "checkbox");
+        item.setAttribute("aria-checked", challenge.completed ? "true" : "false");
+        item.setAttribute("aria-label", challenge.text);
         item.innerHTML = `
             <div class="mini-check-box">
                 <i data-lucide="check"></i>
@@ -742,6 +754,12 @@ function renderMiniChecklist() {
             <span class="mini-check-text">${challenge.text}</span>
         `;
         item.addEventListener("click", () => toggleChallenge(challenge.id));
+        item.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                toggleChallenge(challenge.id);
+            }
+        });
         listEl.appendChild(item);
     });
 }
@@ -898,6 +916,18 @@ function handleChatSubmit(e) {
     }, 800);
 }
 
+function escapeHTML(str) {
+    return str.replace(/[&<>'"]/g, 
+        tag => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#39;',
+            '"': '&quot;'
+        }[tag] || tag)
+    );
+}
+
 function sendQuickQuestion(text) {
     appendChatMessage("user", text);
     const typingMsg = showTypingIndicator();
@@ -915,8 +945,11 @@ function appendChatMessage(sender, text) {
     const msg = document.createElement("div");
     msg.className = `chat-msg ${sender === 'user' ? 'user-msg' : 'system-msg'}`;
     
+    // Sanitize user inputs to prevent XSS
+    const escapedText = sender === 'user' ? escapeHTML(text) : text;
+    
     // Parse markdown-like bold syntax (**text**) for styling
-    let formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    let formattedText = escapedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     // Parse line breaks
     formattedText = formattedText.replace(/\n/g, '<br>');
 
@@ -983,6 +1016,30 @@ function getCoachResponse(query) {
         const pct = Math.round((worst.val / em.total) * 100);
 
         return `Your current Carbon Footprint is **${em.total} tons CO₂e** per year, giving you a Green Score of **${appState.greenScore}/100**.\n\nYour highest source of emissions is **${worst.name}**, contributing **${worst.val} tons** (approx. **${pct}%** of your total emissions). To make the fastest impact, I suggest you ${worst.advice}`;
+    }
+
+    // Check custom roadmap / plan query
+    if (normalized.includes("roadmap") || normalized.includes("plan") || normalized.includes("sustainability roadmap") || normalized.includes("reduction plan")) {
+        if (!appState.hasCalculated) {
+            return "You haven't run the carbon footprint calculator yet! Once you calculate your footprint, I will generate a customized 30-day weekly reduction roadmap for you.";
+        }
+        const em = appState.calculatedEmissions;
+        const roadmapItems = [
+            { name: "Transport", val: em.transport, action: "Switch 2 commutes/wk to train/bus or walk", detail: "Reduces weekly transport emissions by up to 30%." },
+            { name: "Home Energy", val: em.energy, action: "Switch bulbs to LED & power down idle devices", detail: "Cuts electrical vampire drain by 10% instantly." },
+            { name: "Food & Diet", val: em.food, action: "Introduce 2 meatless (vegan) days weekly", detail: "Mitigates red-meat farming emissions substantially." },
+            { name: "Consumption", val: em.shopping, action: "Avoid high tech/fast fashion shopping sprees", detail: "Curtails upstream industrial manufacture outputs." }
+        ];
+        roadmapItems.sort((a, b) => b.val - a.val);
+        
+        let response = `Based on your highest carbon outputs, here is your personalized **30-Day Carbon Reduction Roadmap**:\n\n`;
+        roadmapItems.forEach((item, index) => {
+            response += `**Week ${index + 1}: Target ${item.name}** (Current emissions: ${item.val} Tons)\n`;
+            response += `* *Action:* ${item.action}\n`;
+            response += `* *Expected Benefit:* ${item.detail}\n\n`;
+        });
+        response += `You can track this roadmap in real-time under the **Roadmap** section of your **Eco Dashboard**!`;
+        return response;
     }
 
     // Standard Keywords checks
@@ -1087,6 +1144,10 @@ function renderChallenges() {
     appState.challenges.forEach(challenge => {
         const row = document.createElement("div");
         row.className = `challenge-row ${challenge.completed ? 'completed' : ''}`;
+        row.setAttribute("tabindex", "0");
+        row.setAttribute("role", "checkbox");
+        row.setAttribute("aria-checked", challenge.completed ? "true" : "false");
+        row.setAttribute("aria-label", `${challenge.text}, reward ${challenge.points} points`);
         row.innerHTML = `
             <div class="challenge-checkbox">
                 <i data-lucide="check"></i>
@@ -1098,6 +1159,12 @@ function renderChallenges() {
             <div class="challenge-reward">+${challenge.points} PTS</div>
         `;
         row.addEventListener("click", () => toggleChallenge(challenge.id));
+        row.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                toggleChallenge(challenge.id);
+            }
+        });
         listEl.appendChild(row);
     });
 
@@ -1303,6 +1370,9 @@ function renderAllViews() {
     renderSidebarCoachInsights();
     renderChallenges();
     renderChatGreeting();
+    if (window.lucide) {
+        lucide.createIcons();
+    }
 }
 
 function renderChatGreeting() {
