@@ -927,6 +927,12 @@ function appendChatMessage(sender, text) {
     `;
     screen.appendChild(msg);
     screen.scrollTop = screen.scrollHeight;
+
+    // Announce system responses to screen readers
+    if (sender === "system") {
+        const plainText = text.replace(/\*\*/g, "");
+        announceToScreenReader(`EcoBuddy says: ${plainText}`);
+    }
 }
 
 function showTypingIndicator() {
@@ -1152,6 +1158,8 @@ function unlockBadge(badgeId) {
     const badge = BADGES.find(b => b.id === badgeId);
     if (!badge) return;
 
+    announceToScreenReader(`New Achievement Badge Unlocked: ${badge.name}. ${badge.desc}`);
+
     // Trigger alert popup modal
     const modal = document.getElementById("badge-alert-modal");
     const title = document.getElementById("alert-title");
@@ -1184,6 +1192,8 @@ function closeBadgeAlert() {
 
 // --- Notifications Helper ---
 function showSystemNotification(title, message) {
+    announceToScreenReader(`Notification: ${title}. ${message}`);
+
     // Check if notification box already exists
     let toast = document.querySelector(".toast-notification");
     if (toast) toast.remove();
@@ -1292,4 +1302,54 @@ function renderAllViews() {
     renderDashboard();
     renderSidebarCoachInsights();
     renderChallenges();
+    renderChatGreeting();
+}
+
+function renderChatGreeting() {
+    const screen = document.getElementById("chat-screen-area");
+    if (!screen) return;
+    
+    // Clear initial greeting if it's there
+    screen.innerHTML = "";
+    
+    if (appState.hasCalculated) {
+        const em = appState.calculatedEmissions;
+        const score = appState.greenScore;
+        const categories = [
+            { name: "Transport", val: em.transport },
+            { name: "Home Energy", val: em.energy },
+            { name: "Diet & Food Habits", val: em.food },
+            { name: "Shopping & Waste", val: em.shopping }
+        ];
+        categories.sort((a, b) => b.val - a.val);
+        const worst = categories[0];
+        
+        appendChatMessage("system", `Hi there! I am **EcoBuddy**, your AI Sustainability Coach. I've analyzed your footprint data:
+        
+Your total annual emissions are **${em.total} Tons CO₂e**, and your Green Score is **${score}/100** (${getScoreCategoryName(score)}).
+Your highest emission category is **${worst.name}** at **${worst.val} Tons**.
+        
+Ask me below for a custom reduction plan or advice on how to lower your footprint!`);
+    } else {
+        appendChatMessage("system", `Hi there! I am **EcoBuddy**, your AI Sustainability Coach.
+        
+I am ready to help you analyze and reduce your carbon footprint! Once you complete the **Calculator** tab, I will give you context-specific advice. In the meantime, feel free to ask me general sustainability questions!`);
+    }
+}
+
+function getScoreCategoryName(score) {
+    if (score >= 80) return "Eco Champion";
+    if (score >= 60) return "Green Explorer";
+    if (score >= 40) return "Improving";
+    return "High Climate Impact";
+}
+
+function announceToScreenReader(message) {
+    const announcer = document.getElementById("sr-announcer");
+    if (announcer) {
+        announcer.textContent = "";
+        setTimeout(() => {
+            announcer.textContent = message;
+        }, 50);
+    }
 }
