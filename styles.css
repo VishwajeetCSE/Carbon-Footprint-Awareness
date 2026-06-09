@@ -1513,119 +1513,161 @@ label {
    Mobile / Responsive Layouts
    ========================================================================== */
 @media (max-width: 1024px) {
-    .dashboard-grid {
-        grid-template-columns: repeat(6, 1fr);
-    }
-    .span-4 { grid-column: span 3; }
-    .span-6 { grid-column: span 6; }
-    .span-12 { grid-column: span 6; }
-    
-    .equivalents-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .scenario-layout {
-        grid-template-columns: 1fr;
-    }
-    
-    .assistant-container {
-        grid-template-columns: 1fr;
-        height: auto;
-    }
-    .assistant-meta-sidebar {
-        margin-top: 1.5rem;
-    }
-    
-    .challenges-layout {
-        grid-template-columns: 1fr;
-    }
-}
-
-@media (max-width: 768px) {
     body {
         font-size: 15px;
     }
-    
+
     .app-container {
         flex-direction: column;
     }
-    
+
     .sidebar {
         width: 100%;
         height: auto;
         position: relative;
-        padding: 1.25rem 1.5rem;
+        padding: 1rem 1.5rem;
         border-right: none;
         border-bottom: 1px solid hsl(var(--border-glass));
     }
-    
+
     .logo-area {
-        margin-bottom: 1.5rem;
+        margin-bottom: 1rem;
+        justify-content: center;
     }
-    
+
     .nav-menu {
         flex-direction: row;
         overflow-x: auto;
         padding-bottom: 0.5rem;
         margin-bottom: 0;
+        justify-content: center;
+        gap: 0.5rem;
+        -webkit-overflow-scrolling: touch;
     }
-    
+
     .nav-item {
-        padding: 0.65rem 0.85rem;
+        padding: 0.6rem 0.85rem;
         font-size: 0.85rem;
+        white-space: nowrap;
     }
-    
+
     .sidebar-footer {
-        display: none; /* Hide streak and user info in simple mobile header to save space */
+        display: none; /* Hide header details to save vertical space on mobile/tablet */
     }
-    
+
     .main-content {
         margin-left: 0;
-        padding: 1.5rem;
+        padding: 1.5rem 2rem;
+    }
+
+    /* Keep 12-column layout on tablets but adjust spans */
+    .dashboard-grid {
+        grid-template-columns: repeat(12, 1fr);
+        gap: 1.25rem;
     }
     
+    .span-4 { grid-column: span 4; }
+    .span-6 { grid-column: span 6; }
+    .span-12 { grid-column: span 12; }
+
+    .scenario-layout {
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
+    }
+
+    /* Fixed height scrollable chatbot view for tablet/mobile */
+    .assistant-container {
+        grid-template-columns: 1fr;
+        height: 620px;
+        gap: 1.25rem;
+    }
+
+    .assistant-chat-pane {
+        height: 420px;
+        flex-grow: 0;
+    }
+
+    .chat-screen {
+        height: calc(100% - 100px);
+    }
+
+    .assistant-meta-sidebar {
+        margin-top: 0;
+        height: auto;
+    }
+
+    .challenges-layout {
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .main-content {
+        padding: 1rem;
+    }
+
+    /* Collapse to 1 column on mobiles */
     .dashboard-grid {
         grid-template-columns: 1fr;
         gap: 1rem;
     }
-    
+
     .span-4, .span-6, .span-12 {
         grid-column: span 1;
     }
-    
+
     .chart-flex {
         flex-direction: column;
         gap: 1.5rem;
+        align-items: center;
     }
-    
+
+    .chart-legend {
+        align-items: center;
+        text-align: center;
+    }
+
     .equivalents-grid {
         grid-template-columns: 1fr;
+        gap: 0.75rem;
     }
-    
+
     .stepper {
         margin-bottom: 2rem;
+        gap: 0.25rem;
     }
-    
+
     .stepper::before {
         display: none;
     }
-    
+
     .step-indicator {
         width: auto;
     }
-    
+
     .step-title {
-        display: none; /* Hide labels on mobile stepper */
+        display: none; /* Hide stepper titles on mobile screen */
     }
-    
+
     .calculator-container {
-        padding: 1.25rem;
+        padding: 1.25rem 1rem;
     }
-    
+
     .badges-grid {
         grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .assistant-container {
+        height: auto;
+    }
+
+    .assistant-chat-pane {
+        height: 450px;
     }
 }
+
 
 /* ==========================================================================
    Accessibility: Focus States for Keyboard Navigation
