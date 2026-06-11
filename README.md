@@ -215,6 +215,9 @@ CarbonTrack AI is designed for WCAG 2.1 AA compliance, featuring semantic HTML s
 ## 📈 Validation
 All carbon calculation constants, solar multipliers, and mathematical formulas align with standard EPA and IPCC benchmarks. For validation values and boundary constraints, read the full [VALIDATION.md](file:///c:/Users/Ajay/Desktop/Carbon-Calculator/VALIDATION.md).
 
+## 💎 Code Quality
+CarbonTrack AI follows clean coding principles, camelCase naming conventions, and maintains minimal cyclomatic complexity (without callback hell). For coding standards, complexity limits, refactoring decisions, and ESLint setups, read the full [CODE_QUALITY.md](file:///c:/Users/Ajay/Desktop/Carbon-Calculator/CODE_QUALITY.md).
+
 ---
 
 ## Running Locally
