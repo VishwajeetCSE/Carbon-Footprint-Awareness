@@ -70,7 +70,7 @@ function drawPieSegments(pieSvg, legend, categories, total) {
         pathEl.setAttribute("fill", cat.color);
         pathEl.setAttribute("stroke", "hsl(var(--bg-surface))");
         pathEl.setAttribute("stroke-width", "3");
-        pathEl.style.transition = "transform 0.2s ease";
+        pathEl.style.transition = "all 0.5s cubic-bezier(0.4, 0, 0.2, 1)";
         pathEl.style.cursor = "pointer";
         
         pathEl.addEventListener("mouseenter", () => {

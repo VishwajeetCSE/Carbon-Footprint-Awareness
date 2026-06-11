@@ -200,6 +200,37 @@ function announceToScreenReader(message) {
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
+
+/**
+ * Calculates the Levenshtein distance between two strings for fuzzy matching.
+ * @param {string} a - First string.
+ * @param {string} b - Second string.
+ * @returns {number} The distance score.
+ */
+function levenshteinDistance(a, b) {
+    if (a.length === 0) return b.length;
+    if (b.length === 0) return a.length;
+    const matrix = [];
+    for (let i = 0; i <= b.length; i++) {
+        matrix[i] = [i];
+    }
+    for (let j = 0; j <= a.length; j++) {
+        matrix[0][j] = j;
+    }
+    for (let i = 1; i <= b.length; i++) {
+        for (let j = 1; j <= a.length; j++) {
+            if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                matrix[i][j] = matrix[i - 1][j - 1];
+            } else {
+                matrix[i][j] = Math.min(
+                    matrix[i - 1][j - 1] + 1,
+                    Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1)
+                );
+            }
+        }
+    }
+    return matrix[b.length][a.length];
+}
 /* ===== END OF MODULE: utils.js ===== */
 
 /* ===== START OF MODULE: storage.js ===== */
@@ -749,7 +780,7 @@ function drawPieSegments(pieSvg, legend, categories, total) {
         pathEl.setAttribute("fill", cat.color);
         pathEl.setAttribute("stroke", "hsl(var(--bg-surface))");
         pathEl.setAttribute("stroke-width", "3");
-        pathEl.style.transition = "transform 0.2s ease";
+        pathEl.style.transition = "all 0.5s cubic-bezier(0.4, 0, 0.2, 1)";
         pathEl.style.cursor = "pointer";
         
         pathEl.addEventListener("mouseenter", () => {
@@ -1105,6 +1136,7 @@ function getDiffExplanation(curr, prev) {
 /* ===== END OF MODULE: charts.js ===== */
 
 /* ===== START OF MODULE: chatbot.js ===== */
+/* global levenshteinDistance */
 /**
  * Handles submission of EcoBuddy chatbot messages.
  * @param {Event} e - Form submission event.
@@ -1264,25 +1296,39 @@ function getCoachRoadmapResponse() {
  */
 function getCoachResponse(query) {
     const normalized = query.toLowerCase();
+    const tokens = normalized.split(/\s+/); // tokenize user query
 
     // Declarative key-to-action rules registry
     const rules = [
-        { keys: ["my score", "my footprint", "improve score", "highest"], action: getCoachProfileResponse },
-        { keys: ["roadmap", "plan", "sustainability roadmap", "reduction plan"], action: getCoachRoadmapResponse },
-        { keys: ["transport", "car", "flight", "travel"], response: COACH_AI_RULES.transport[0] },
-        { keys: ["energy", "electricity", "solar", "water", "bulb"], response: COACH_AI_RULES.energy[0] },
-        { keys: ["diet", "food", "meat", "vegan", "vegetarian"], response: COACH_AI_RULES.diet[0] },
-        { keys: ["offset", "tree", "planting"], response: COACH_AI_RULES.offset[0] },
-        { keys: ["calculation", "math", "factors", "how work"], response: COACH_AI_RULES.calculations[0] }
+        { keys: ["score", "footprint", "improve", "highest"], action: getCoachProfileResponse },
+        { keys: ["roadmap", "plan", "sustainability", "reduction"], action: getCoachRoadmapResponse },
+        { keys: ["transport", "car", "flight", "travel", "commute", "bus", "train", "drive"], response: COACH_AI_RULES.transport[0] },
+        { keys: ["energy", "electricity", "solar", "water", "bulb", "power", "grid", "home"], response: COACH_AI_RULES.energy[0] },
+        { keys: ["diet", "food", "meat", "vegan", "vegetarian", "eat", "meal", "grocery"], response: COACH_AI_RULES.diet[0] },
+        { keys: ["offset", "tree", "planting", "sequestration", "carbon"], response: COACH_AI_RULES.offset[0] },
+        { keys: ["calculation", "math", "factors", "work", "how"], response: COACH_AI_RULES.calculations[0] }
     ];
 
+    // First try fuzzy match on tokens against rule keys
+    // If a token is within 1 or 2 edits of a key, we count it as a match.
     for (const rule of rules) {
-        if (rule.keys.some(k => normalized.includes(k))) {
-            return rule.action ? rule.action() : rule.response;
+        for (const key of rule.keys) {
+            if (normalized.includes(key)) {
+                return rule.action ? rule.action() : rule.response;
+            }
+            // Fuzzy check each word in the query against the key
+            for (const token of tokens) {
+                if (token.length > 3 && Math.abs(token.length - key.length) <= 2) {
+                    const dist = levenshteinDistance(token, key);
+                    if (dist <= 1 || (key.length > 5 && dist <= 2)) {
+                        return rule.action ? rule.action() : rule.response;
+                    }
+                }
+            }
         }
     }
 
-    if (normalized.includes("hello") || normalized.includes("hi ") || normalized.includes("hey")) {
+    if (normalized.includes("hello") || normalized.includes("hi") || normalized.includes("hey")) {
         const greetings = COACH_AI_RULES.greetings;
         return greetings[Math.floor(Math.random() * greetings.length)];
     }
