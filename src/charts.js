@@ -20,6 +20,39 @@ function getPieChartCategories(emissions) {
  * @param {number} total - Sum of all categories footprint.
  * @returns {void}
  */
+/**
+ * Computes polar-to-cartesian trigonometry and formats the SVG path data for a donut wedge.
+ * @param {number} cx - Center X coordinate.
+ * @param {number} cy - Center Y coordinate.
+ * @param {number} r - Segment radius.
+ * @param {number} cumulativePercentage - Accrued angle offset fraction.
+ * @param {number} percent - Current segment percentage value.
+ * @returns {string} SVG path string.
+ */
+function buildPieSegmentPath(cx, cy, r, cumulativePercentage, percent) {
+    const angleStart = cumulativePercentage * 360;
+    const angleEnd = (cumulativePercentage + percent) * 360;
+
+    const radStart = (angleStart - 90) * Math.PI / 180;
+    const radEnd = (angleEnd - 90) * Math.PI / 180;
+
+    const x1 = cx + r * Math.cos(radStart);
+    const y1 = cy + r * Math.sin(radStart);
+    const x2 = cx + r * Math.cos(radEnd);
+    const y2 = cy + r * Math.sin(radEnd);
+
+    const largeArc = percent > 0.5 ? 1 : 0;
+    return `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+}
+
+/**
+ * Iterates through categories, appends SVG paths, and renders legends.
+ * @param {SVGElement} pieSvg - Target Pie SVG node.
+ * @param {HTMLElement} legend - Legend container element.
+ * @param {Array<Object>} categories - Category array list.
+ * @param {number} total - Sum of all categories footprint.
+ * @returns {void}
+ */
 function drawPieSegments(pieSvg, legend, categories, total) {
     let cumulativePercentage = 0;
     const cx = 100;
@@ -30,19 +63,7 @@ function drawPieSegments(pieSvg, legend, categories, total) {
         const percent = cat.val / total;
         if (percent === 0) return;
 
-        const angleStart = cumulativePercentage * 360;
-        const angleEnd = (cumulativePercentage + percent) * 360;
-
-        const radStart = (angleStart - 90) * Math.PI / 180;
-        const radEnd = (angleEnd - 90) * Math.PI / 180;
-
-        const x1 = cx + r * Math.cos(radStart);
-        const y1 = cy + r * Math.sin(radStart);
-        const x2 = cx + r * Math.cos(radEnd);
-        const y2 = cy + r * Math.sin(radEnd);
-
-        const largeArc = percent > 0.5 ? 1 : 0;
-        const pathData = `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+        const pathData = buildPieSegmentPath(cx, cy, r, cumulativePercentage, percent);
 
         const pathEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
         pathEl.setAttribute("d", pathData);
@@ -127,21 +148,13 @@ function renderPieChart() {
 }
 
 /**
- * Generates and renders the dynamic SVG historical trend line chart on the Dashboard tab.
- * Calculates plot scales, draws gridlines, plots linear coordinates, sets glow filters,
- * binds hover inspectors, and injects chart accessibility tags.
+ * Injects screen-reader titles and summaries for dynamic chart updates.
+ * @param {SVGElement} trendSvg - Target trend SVG canvas.
+ * @param {HTMLElement} legend - Legend DOM container.
+ * @param {Array<Object>} history - Carbon records history array.
  * @returns {void}
  */
-function renderTrendLineChart() {
-    const trendSvg = document.getElementById("trend-line-chart");
-    const legend = document.getElementById("trend-chart-legend");
-    if (!trendSvg || !legend) return;
-
-    // Clear contents
-    trendSvg.innerHTML = "";
-    legend.innerHTML = "";
-
-    // Set accessibility description
+function setChartAccessibilityTags(trendSvg, legend, history) {
     const trendTitle = document.createElementNS("http://www.w3.org/2000/svg", "title");
     trendTitle.id = "trend-chart-title";
     trendTitle.textContent = "Emissions Trend Chart";
@@ -149,7 +162,6 @@ function renderTrendLineChart() {
 
     const trendDesc = document.createElementNS("http://www.w3.org/2000/svg", "desc");
     trendDesc.id = "trend-chart-desc";
-    const history = appState.history || [];
     if (history.length > 0) {
         const historyStr = history.map(h => `${h.date}: ${h.footprint} Tons`).join(", ");
         trendDesc.textContent = `A line graph showing your footprint history: ${historyStr}.`;
@@ -157,33 +169,33 @@ function renderTrendLineChart() {
         trendDesc.textContent = "A line graph plotting your carbon footprint history across your recent calculations.";
     }
     trendSvg.appendChild(trendDesc);
+}
 
-    if (history.length === 0) {
-        trendSvg.innerHTML = `
-            <line x1="30" y1="15" x2="285" y2="15" stroke="rgba(255,255,255,0.03)" stroke-dasharray="3,3" />
-            <line x1="30" y1="65" x2="285" y2="65" stroke="rgba(255,255,255,0.03)" stroke-dasharray="3,3" />
-            <line x1="30" y1="115" x2="285" y2="115" stroke="rgba(255,255,255,0.03)" stroke-dasharray="3,3" />
-            <text x="157" y="70" fill="hsla(var(--text-primary), 0.15)" font-size="8" text-anchor="middle">Awaiting calculations...</text>
-        `;
-        legend.innerHTML = `<div class="legend-placeholder">No history data available. Complete calculations to log points.</div>`;
-        return;
-    }
+/**
+ * Draws coordinate grids and placeholders when history log is empty.
+ * @param {SVGElement} trendSvg - Target trend SVG canvas.
+ * @param {HTMLElement} legend - Legend DOM container.
+ * @returns {void}
+ */
+function renderEmptyTrendPlaceholder(trendSvg, legend) {
+    trendSvg.innerHTML = `
+        <line x1="30" y1="15" x2="285" y2="15" stroke="rgba(255,255,255,0.03)" stroke-dasharray="3,3" />
+        <line x1="30" y1="65" x2="285" y2="65" stroke="rgba(255,255,255,0.03)" stroke-dasharray="3,3" />
+        <line x1="30" y1="115" x2="285" y2="115" stroke="rgba(255,255,255,0.03)" stroke-dasharray="3,3" />
+        <text x="157" y="70" fill="hsla(var(--text-primary), 0.15)" font-size="8" text-anchor="middle">Awaiting calculations...</text>
+    `;
+    legend.innerHTML = `<div class="legend-placeholder">No history data available. Complete calculations to log points.</div>`;
+}
 
-    const w = 300;
-    const h = 140;
-    const padL = 30;
-    const padR = 15;
-    const padT = 15;
-    const padB = 25;
-    
-    const plotW = w - padL - padR;
-    const plotH = h - padT - padB;
-
-    const footprints = history.map(pt => pt.footprint);
+/**
+ * Calculates Y-axis minimum and maximum boundaries based on footprint history.
+ * @param {Array<number>} footprints - Footprints dataset array.
+ * @returns {Object} Boundaries object containing minVal and maxVal.
+ */
+function calculateTrendScale(footprints) {
     let maxVal = Math.max(...footprints);
     let minVal = Math.min(...footprints);
-    
-    // Safety margin to prevent scaling collapse
+
     if (maxVal === minVal) {
         maxVal += 2.0;
         minVal = Math.max(0, minVal - 2.0);
@@ -192,8 +204,15 @@ function renderTrendLineChart() {
         maxVal += margin;
         minVal = Math.max(0, minVal - margin);
     }
+    return { maxVal, minVal };
+}
 
-    // Set SVG definitions (Gradients and Glow filters)
+/**
+ * Injects linear gradients and filters into SVG defs for chart glow styles.
+ * @param {SVGElement} trendSvg - Target trend SVG canvas.
+ * @returns {void}
+ */
+function drawTrendGlowFilters(trendSvg) {
     const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
     defs.innerHTML = `
         <linearGradient id="trend-grad" x1="0" y1="0" x2="0" y2="1">
@@ -206,24 +225,47 @@ function renderTrendLineChart() {
         </filter>
     `;
     trendSvg.appendChild(defs);
+}
 
-    // Draw horizontal grid lines and labels
+/**
+ * Generates and renders the dynamic SVG historical trend line chart on the Dashboard tab.
+ * Calculates plot scales, draws gridlines, plots linear coordinates, sets glow filters,
+ * binds hover inspectors, and injects chart accessibility tags.
+ * @returns {void}
+ */
+function renderTrendLineChart() {
+    const trendSvg = document.getElementById("trend-line-chart");
+    const legend = document.getElementById("trend-chart-legend");
+    if (!trendSvg || !legend) return;
+
+    trendSvg.innerHTML = "";
+    legend.innerHTML = "";
+
+    const history = appState.history || [];
+    setChartAccessibilityTags(trendSvg, legend, history);
+
+    if (history.length === 0) {
+        renderEmptyTrendPlaceholder(trendSvg, legend);
+        return;
+    }
+
+    const w = 300, h = 140, padL = 30, padR = 15, padT = 15, padB = 25;
+    const plotW = w - padL - padR, plotH = h - padT - padB;
+
+    const { maxVal, minVal } = calculateTrendScale(history.map(pt => pt.footprint));
+
+    drawTrendGlowFilters(trendSvg);
     drawChartGridLines(trendSvg, maxVal, minVal, padL, padR, padT, plotH, w);
 
-    // Generate point coordinates
     const coords = [];
     const n = history.length;
-    
     history.forEach((pt, idx) => {
         const x = n > 1 ? padL + (idx / (n - 1)) * plotW : padL + plotW / 2;
         const y = padT + (1 - (pt.footprint - minVal) / (maxVal - minVal)) * plotH;
         coords.push({ x, y, date: pt.date, footprint: pt.footprint });
     });
 
-    // Draw area path and line path
     drawChartTrendLine(trendSvg, coords, padT, plotH);
-
-    // Draw interactive points, labels, and handle legends
     drawChartPlotPoints(trendSvg, legend, coords, h);
 }
 

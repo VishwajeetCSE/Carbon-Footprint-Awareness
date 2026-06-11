@@ -68,6 +68,72 @@ function calculateShoppingEmissions(shoppingType, recycleLevel) {
 }
 
 /**
+ * Extracts all numeric and select carbon calculator inputs from the DOM.
+ * @returns {Object} Extracted form input values.
+ */
+function fetchCalculatorInputs() {
+    return {
+        carKm: parseFloat(document.getElementById("input-car-km").value),
+        carType: document.getElementById("input-car-type").value,
+        publicKm: parseFloat(document.getElementById("input-public-km").value),
+        flights: parseFloat(document.getElementById("input-flights").value),
+        electricityKwh: parseFloat(document.getElementById("input-electricity").value),
+        solarType: document.getElementById("input-solar").value,
+        waterLiters: parseFloat(document.getElementById("input-water").value),
+        dietType: document.getElementById("input-diet").value,
+        localFood: document.getElementById("input-local-food").value,
+        foodWaste: document.getElementById("input-food-waste").value,
+        shoppingType: document.getElementById("input-shopping").value,
+        recycleLevel: document.getElementById("input-recycling").value
+    };
+}
+
+/**
+ * Reviews the calculated Green Score and awards appropriate milestone badges.
+ * @returns {void}
+ */
+function awardCalculatorBadges() {
+    unlockBadge('eco-beginner');
+    if (appState.greenScore >= 75) {
+        unlockBadge('climate-champion');
+    }
+}
+
+/**
+ * Updates the user's historical emissions records in state, pre-populating mock points if empty.
+ * @param {number} totalFootprint - The newly calculated carbon footprint.
+ * @returns {void}
+ */
+function updateStateHistory(totalFootprint) {
+    if (!appState.history) {
+        appState.history = [];
+    }
+
+    if (appState.history.length === 0) {
+        const dateNow = new Date();
+        const date2Wk = new Date(dateNow.getTime() - 14 * 24 * 60 * 60 * 1000);
+        const date4Wk = new Date(dateNow.getTime() - 28 * 24 * 60 * 60 * 1000);
+        const formatOptions = { month: 'short', day: 'numeric' };
+
+        appState.history = [
+            { date: date4Wk.toLocaleDateString(undefined, formatOptions), footprint: Number((totalFootprint * 1.35).toFixed(2)) },
+            { date: date2Wk.toLocaleDateString(undefined, formatOptions), footprint: Number((totalFootprint * 1.18).toFixed(2)) },
+            { date: dateNow.toLocaleDateString(undefined, formatOptions), footprint: Number(totalFootprint.toFixed(2)) }
+        ];
+    } else {
+        appState.history.push({
+            date: new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+            footprint: Number(totalFootprint.toFixed(2))
+        });
+        if (appState.history.length > MAX_HISTORY_ENTRIES) {
+            appState.history.shift();
+        }
+    }
+    // Maintain compatibility with VM sandbox tests
+    appState.calculationHistory = appState.history;
+}
+
+/**
  * Calculates the user's annual carbon footprint in metric tons of CO2 equivalent (CO2e).
  * Extracts input values, applies EPA/IPCC emission coefficients, maps outputs,
  * updates the global application state, checks badge unlocking rules,
@@ -75,33 +141,14 @@ function calculateShoppingEmissions(shoppingType, recycleLevel) {
  * @returns {void}
  */
 function calculateCarbonFootprint() {
-    // 1. Fetch values
-    const carKm = parseFloat(document.getElementById("input-car-km").value);
-    const carType = document.getElementById("input-car-type").value;
-    const publicKm = parseFloat(document.getElementById("input-public-km").value);
-    const flights = parseFloat(document.getElementById("input-flights").value);
-    
-    const electricityKwh = parseFloat(document.getElementById("input-electricity").value);
-    const solarType = document.getElementById("input-solar").value;
-    const waterLiters = parseFloat(document.getElementById("input-water").value);
-    
-    const dietType = document.getElementById("input-diet").value;
-    const localFood = document.getElementById("input-local-food").value;
-    const foodWaste = document.getElementById("input-food-waste").value;
-    
-    const shoppingType = document.getElementById("input-shopping").value;
-    const recycleLevel = document.getElementById("input-recycling").value;
+    const inputs = fetchCalculatorInputs();
 
-    // 2. Compute emissions via decomposed helpers
-    const transportBreakdown = calculateTransportEmissions(carKm, carType, publicKm, flights);
-    const totalTransport = transportBreakdown.total;
-    const totalEnergy = calculateEnergyEmissions(electricityKwh, solarType, waterLiters);
-    const totalFood = calculateFoodEmissions(dietType, localFood, foodWaste);
-    const totalShopping = calculateShoppingEmissions(shoppingType, recycleLevel);
-
+    const totalTransport = calculateTransportEmissions(inputs.carKm, inputs.carType, inputs.publicKm, inputs.flights).total;
+    const totalEnergy = calculateEnergyEmissions(inputs.electricityKwh, inputs.solarType, inputs.waterLiters);
+    const totalFood = calculateFoodEmissions(inputs.dietType, inputs.localFood, inputs.foodWaste);
+    const totalShopping = calculateShoppingEmissions(inputs.shoppingType, inputs.recycleLevel);
     const totalFootprint = totalTransport + totalEnergy + totalFood + totalShopping;
 
-    // Update State
     appState.calculatedEmissions = {
         transport: Number(totalTransport.toFixed(2)),
         energy: Number(totalEnergy.toFixed(2)),
@@ -111,55 +158,15 @@ function calculateCarbonFootprint() {
     };
     appState.hasCalculated = true;
 
-    // Calculate Green Score (0-100 scale: 12 tons carbon is 0 score, 1 ton carbon is 100 score)
-    const baselineMax = EMISSION_BASE_MAX;
-    const baselineMin = EMISSION_BASE_MIN;
-    let score = 100 - ((totalFootprint - baselineMin) / (baselineMax - baselineMin)) * 100;
-    score = Math.round(score);
-    appState.greenScore = Math.max(0, Math.min(100, score));
+    const rawScore = 100 - ((totalFootprint - EMISSION_BASE_MIN) / (EMISSION_BASE_MAX - EMISSION_BASE_MIN)) * 100;
+    appState.greenScore = Math.max(0, Math.min(100, Math.round(rawScore)));
 
-    // Award Badge for calculation
-    unlockBadge('eco-beginner');
-
-    // If score is high, award climate champion
-    if (appState.greenScore >= 75) {
-        unlockBadge('climate-champion');
-    }
-
-    // Update calculation history
-    if (!appState.history) {
-        appState.history = [];
-    }
-    
-    // Check if this is the first calculation to pre-populate simulated trend
-    if (appState.history.length === 0) {
-        const dateNow = new Date();
-        const date2Wk = new Date(dateNow.getTime() - 14 * 24 * 60 * 60 * 1000);
-        const date4Wk = new Date(dateNow.getTime() - 28 * 24 * 60 * 60 * 1000);
-        
-        const formatOptions = { month: 'short', day: 'numeric' };
-        
-        appState.history = [
-            { date: date4Wk.toLocaleDateString(undefined, formatOptions), footprint: Number((totalFootprint * 1.35).toFixed(2)) },
-            { date: date2Wk.toLocaleDateString(undefined, formatOptions), footprint: Number((totalFootprint * 1.18).toFixed(2)) },
-            { date: dateNow.toLocaleDateString(undefined, formatOptions), footprint: Number(totalFootprint.toFixed(2)) }
-        ];
-    } else {
-        // Add new point
-        appState.history.push({
-            date: new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-            footprint: Number(totalFootprint.toFixed(2))
-        });
-        if (appState.history.length > MAX_HISTORY_ENTRIES) {
-            appState.history.shift();
-        }
-    }
+    awardCalculatorBadges();
+    updateStateHistory(totalFootprint);
 
     saveStateToLocalStorage();
     renderAllViews();
     switchTab("dashboard");
-
-    // Pop visual success prompt
     showSystemNotification("Calculation Success!", "Your personal carbon footprint has been calculated.");
 }
 

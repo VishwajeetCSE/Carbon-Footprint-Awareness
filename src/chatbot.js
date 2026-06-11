@@ -100,6 +100,56 @@ function showTypingIndicator() {
 }
 
 /**
+ * Formulates a customized response detailing the user's highest emissions category and advice.
+ * @returns {string} Contextual profile sustainability suggestions.
+ */
+function getCoachProfileResponse() {
+    if (!appState.hasCalculated) {
+        return "You haven't run the carbon footprint calculator yet! Please navigate to the **Calculator** tab first to set up your baseline score.";
+    }
+
+    const em = appState.calculatedEmissions;
+    const categories = [
+        { name: "Transport", val: em.transport, advice: "consider switching some commutes to public transit or carpooling, or planning a transition to a hybrid or electric vehicle." },
+        { name: "Home Energy", val: em.energy, advice: "look into upgrading to LED bulbs, unplugging idle appliances, and perhaps installing solar panels to capture clean energy." },
+        { name: "Diet & Food Habits", val: em.food, advice: "try incorporating more plant-based meals, reducing weekly red meat intake, and sourcing ingredients from local food hubs." },
+        { name: "Shopping & Waste", val: em.shopping, advice: "repair electronics and clothing before purchasing new ones, reuse plastic materials, and step up your home recycling game." }
+    ];
+    categories.sort((a, b) => b.val - a.val);
+    const worst = categories[0];
+    const pct = Math.round((worst.val / em.total) * 100);
+
+    return `Your current Carbon Footprint is **${em.total} tons CO₂e** per year, giving you a Green Score of **${appState.greenScore}/100**.\n\nYour highest source of emissions is **${worst.name}**, contributing **${worst.val} tons** (approx. **${pct}%** of your total emissions). To make the fastest impact, I suggest you ${worst.advice}`;
+}
+
+/**
+ * Builds a personalized 30-day weekly carbon footprint reduction plan.
+ * @returns {string} Custom 30-day roadmap schedule.
+ */
+function getCoachRoadmapResponse() {
+    if (!appState.hasCalculated) {
+        return "You haven't run the carbon footprint calculator yet! Once you calculate your footprint, I will generate a customized 30-day weekly reduction roadmap for you.";
+    }
+    const em = appState.calculatedEmissions;
+    const roadmapItems = [
+        { name: "Transport", val: em.transport, action: "Switch 2 commutes/wk to train/bus or walk", detail: "Reduces weekly transport emissions by up to 30%." },
+        { name: "Home Energy", val: em.energy, action: "Switch bulbs to LED & power down idle devices", detail: "Cuts electrical vampire drain by 10% instantly." },
+        { name: "Food & Diet", val: em.food, action: "Introduce 2 meatless (vegan) days weekly", detail: "Mitigates red-meat farming emissions substantially." },
+        { name: "Consumption", val: em.shopping, action: "Avoid high tech/fast fashion shopping sprees", detail: "Curtails upstream industrial manufacture outputs." }
+    ];
+    roadmapItems.sort((a, b) => b.val - a.val);
+
+    let response = `Based on your highest carbon outputs, here is your personalized **30-Day Carbon Reduction Roadmap**:\n\n`;
+    roadmapItems.forEach((item, index) => {
+        response += `**Week ${index + 1}: Target ${item.name}** (Current emissions: ${item.val} Tons)\n`;
+        response += `* *Action:* ${item.action}\n`;
+        response += `* *Expected Benefit:* ${item.detail}\n\n`;
+    });
+    response += `You can track this roadmap in real-time under the **Roadmap** section of your **Eco Dashboard**!`;
+    return response;
+}
+
+/**
  * Evaluates queries against keyword sets locally to generate chatbot coach guidelines.
  * Maps high emissions segments and suggests custom roadmap configurations.
  * @param {string} query - The query entered by the user.
@@ -108,72 +158,28 @@ function showTypingIndicator() {
 function getCoachResponse(query) {
     const normalized = query.toLowerCase();
 
-    // Check Contextual Profile queries
-    if (normalized.includes("my score") || normalized.includes("my footprint") || normalized.includes("improve score") || normalized.includes("highest")) {
-        if (!appState.hasCalculated) {
-            return "You haven't run the carbon footprint calculator yet! Please navigate to the **Calculator** tab first to set up your baseline score.";
+    // Declarative key-to-action rules registry
+    const rules = [
+        { keys: ["my score", "my footprint", "improve score", "highest"], action: getCoachProfileResponse },
+        { keys: ["roadmap", "plan", "sustainability roadmap", "reduction plan"], action: getCoachRoadmapResponse },
+        { keys: ["transport", "car", "flight", "travel"], response: COACH_AI_RULES.transport[0] },
+        { keys: ["energy", "electricity", "solar", "water", "bulb"], response: COACH_AI_RULES.energy[0] },
+        { keys: ["diet", "food", "meat", "vegan", "vegetarian"], response: COACH_AI_RULES.diet[0] },
+        { keys: ["offset", "tree", "planting"], response: COACH_AI_RULES.offset[0] },
+        { keys: ["calculation", "math", "factors", "how work"], response: COACH_AI_RULES.calculations[0] }
+    ];
+
+    for (const rule of rules) {
+        if (rule.keys.some(k => normalized.includes(k))) {
+            return rule.action ? rule.action() : rule.response;
         }
-        
-        // Find highest emission category
-        const em = appState.calculatedEmissions;
-        const categories = [
-            { name: "Transport", val: em.transport, advice: "consider switching some commutes to public transit or carpooling, or planning a transition to a hybrid or electric vehicle." },
-            { name: "Home Energy", val: em.energy, advice: "look into upgrading to LED bulbs, unplugging idle appliances, and perhaps installing solar panels to capture clean energy." },
-            { name: "Diet & Food Habits", val: em.food, advice: "try incorporating more plant-based meals, reducing weekly red meat intake, and sourcing ingredients from local food hubs." },
-            { name: "Shopping & Waste", val: em.shopping, advice: "repair electronics and clothing before purchasing new ones, reuse plastic materials, and step up your home recycling game." }
-        ];
-        categories.sort((a, b) => b.val - a.val);
-        const worst = categories[0];
-        const pct = Math.round((worst.val / em.total) * 100);
-
-        return `Your current Carbon Footprint is **${em.total} tons CO₂e** per year, giving you a Green Score of **${appState.greenScore}/100**.\n\nYour highest source of emissions is **${worst.name}**, contributing **${worst.val} tons** (approx. **${pct}%** of your total emissions). To make the fastest impact, I suggest you ${worst.advice}`;
     }
 
-    // Check custom roadmap / plan query
-    if (normalized.includes("roadmap") || normalized.includes("plan") || normalized.includes("sustainability roadmap") || normalized.includes("reduction plan")) {
-        if (!appState.hasCalculated) {
-            return "You haven't run the carbon footprint calculator yet! Once you calculate your footprint, I will generate a customized 30-day weekly reduction roadmap for you.";
-        }
-        const em = appState.calculatedEmissions;
-        const roadmapItems = [
-            { name: "Transport", val: em.transport, action: "Switch 2 commutes/wk to train/bus or walk", detail: "Reduces weekly transport emissions by up to 30%." },
-            { name: "Home Energy", val: em.energy, action: "Switch bulbs to LED & power down idle devices", detail: "Cuts electrical vampire drain by 10% instantly." },
-            { name: "Food & Diet", val: em.food, action: "Introduce 2 meatless (vegan) days weekly", detail: "Mitigates red-meat farming emissions substantially." },
-            { name: "Consumption", val: em.shopping, action: "Avoid high tech/fast fashion shopping sprees", detail: "Curtails upstream industrial manufacture outputs." }
-        ];
-        roadmapItems.sort((a, b) => b.val - a.val);
-        
-        let response = `Based on your highest carbon outputs, here is your personalized **30-Day Carbon Reduction Roadmap**:\n\n`;
-        roadmapItems.forEach((item, index) => {
-            response += `**Week ${index + 1}: Target ${item.name}** (Current emissions: ${item.val} Tons)\n`;
-            response += `* *Action:* ${item.action}\n`;
-            response += `* *Expected Benefit:* ${item.detail}\n\n`;
-        });
-        response += `You can track this roadmap in real-time under the **Roadmap** section of your **Eco Dashboard**!`;
-        return response;
-    }
-
-    // Standard Keywords checks
-    if (normalized.includes("transport") || normalized.includes("car") || normalized.includes("flight") || normalized.includes("travel")) {
-        return COACH_AI_RULES.transport[0];
-    }
-    if (normalized.includes("energy") || normalized.includes("electricity") || normalized.includes("solar") || normalized.includes("water") || normalized.includes("bulb")) {
-        return COACH_AI_RULES.energy[0];
-    }
-    if (normalized.includes("diet") || normalized.includes("food") || normalized.includes("meat") || normalized.includes("vegan") || normalized.includes("vegetarian")) {
-        return COACH_AI_RULES.diet[0];
-    }
-    if (normalized.includes("offset") || normalized.includes("tree") || normalized.includes("planting")) {
-        return COACH_AI_RULES.offset[0];
-    }
-    if (normalized.includes("calculation") || normalized.includes("math") || normalized.includes("factors") || normalized.includes("how work")) {
-        return COACH_AI_RULES.calculations[0];
-    }
     if (normalized.includes("hello") || normalized.includes("hi ") || normalized.includes("hey")) {
-        return COACH_AI_RULES.greetings[Math.floor(Math.random() * COACH_AI_RULES.greetings.length)];
+        const greetings = COACH_AI_RULES.greetings;
+        return greetings[Math.floor(Math.random() * greetings.length)];
     }
 
-    // Default Fallback sustainability advice
     return "That's an interesting question! Broadly, the best way to tackle climate change is to target the **big three**: reducing high-mileage vehicle transit, lowering home heating and air conditioning power draw, and switching to a diet containing fewer animal products. Ask me specifically about **transport**, **diet**, **home energy**, or **offsets** for detailed advice.";
 }
 

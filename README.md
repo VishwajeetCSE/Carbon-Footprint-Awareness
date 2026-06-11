@@ -220,11 +220,25 @@ CarbonTrack AI follows clean coding principles, camelCase naming conventions, an
 
 ---
 
-## Running Locally
+## Running Locally & Development Workflow
+
+To compile source modules and run tests locally:
 
 1. Clone or download the repository files.
-2. Open `index.html` directly in any web browser (Chrome, Firefox, Edge, Safari), or run a local static server:
+2. Install development dependencies:
+   ```bash
+   npm install
+   ```
+3. Compile modular source files from `/src` into the production `app.js` bundle:
+   ```bash
+   node build.js
+   ```
+4. Run the automated unit test suite:
+   ```bash
+   npm test
+   ```
+5. Open `index.html` directly in any web browser, or serve it locally:
    ```bash
    npx serve .
    ```
-3. No build steps or node dependencies are needed to run!
+

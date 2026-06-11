@@ -138,6 +138,32 @@ function switchTab(tabId) {
  * Renders the daily eco-challenges list and achievements badges grid on the Challenges tab.
  * @returns {void}
  */
+/**
+ * Renders the achievements badges grid based on unlocked state.
+ * @param {HTMLElement} gridEl - Target badges grid DOM container.
+ * @returns {void}
+ */
+function renderBadgesGrid(gridEl) {
+    gridEl.innerHTML = "";
+    BADGES.forEach(badge => {
+        const isUnlocked = appState.unlockedBadges.includes(badge.id);
+        const card = document.createElement("div");
+        card.className = `badge-card ${isUnlocked ? 'unlocked' : ''}`;
+        card.innerHTML = `
+            <div class="badge-icon-box ${badge.color === 'gold' ? 'gold' : ''}">
+                <i data-lucide="${badge.icon}"></i>
+            </div>
+            <h4>${badge.name}</h4>
+            <p>${badge.desc}</p>
+        `;
+        gridEl.appendChild(card);
+    });
+}
+
+/**
+ * Renders the daily eco-challenges list and achievements badges grid on the Challenges tab.
+ * @returns {void}
+ */
 function renderChallenges() {
     const listEl = document.getElementById("challenges-checkbox-list");
     const gridEl = document.getElementById("achievements-badges-grid");
@@ -174,21 +200,7 @@ function renderChallenges() {
         listEl.appendChild(row);
     });
 
-    // Render achievements badges
-    gridEl.innerHTML = "";
-    BADGES.forEach(badge => {
-        const isUnlocked = appState.unlockedBadges.includes(badge.id);
-        const card = document.createElement("div");
-        card.className = `badge-card ${isUnlocked ? 'unlocked' : ''}`;
-        card.innerHTML = `
-            <div class="badge-icon-box ${badge.color === 'gold' ? 'gold' : ''}">
-                <i data-lucide="${badge.icon}"></i>
-            </div>
-            <h4>${badge.name}</h4>
-            <p>${badge.desc}</p>
-        `;
-        gridEl.appendChild(card);
-    });
+    renderBadgesGrid(gridEl);
 }
 
 /**
@@ -352,31 +364,11 @@ function showSystemNotification(title, message) {
  * posts queries to EcoBuddy, completes a challenge, and triggers progress reloads.
  * @returns {Promise<void>}
  */
-async function startAutoplayDemo() {
-    // Show a floating visual indicator on the screen that autoplay is running
-    const demoOverlay = document.createElement("div");
-    demoOverlay.style.position = "fixed";
-    demoOverlay.style.bottom = "20px";
-    demoOverlay.style.right = "20px";
-    demoOverlay.style.backgroundColor = "hsl(var(--primary-emerald))";
-    demoOverlay.style.color = "#ffffff";
-    demoOverlay.style.padding = "10px 20px";
-    demoOverlay.style.borderRadius = "30px";
-    demoOverlay.style.boxShadow = "var(--shadow-glow)";
-    demoOverlay.style.zIndex = "3000";
-    demoOverlay.style.fontWeight = "bold";
-    demoOverlay.style.fontFamily = "var(--font-sans)";
-    demoOverlay.style.display = "flex";
-    demoOverlay.style.alignItems = "center";
-    demoOverlay.style.gap = "8px";
-    demoOverlay.innerHTML = `<span class="typing-dot" style="animation: dotBounce 1.4s infinite; font-size: 1.5rem; line-height: 0.5;">.</span> Autoplay Demo Running...`;
-    document.body.appendChild(demoOverlay);
-
-    const updateStatus = (text) => {
-        demoOverlay.innerHTML = `<span class="typing-dot" style="animation: dotBounce 1.4s infinite; font-size: 1.5rem; line-height: 0.5;">.</span> ${text}`;
-    };
-
-    // Step 1: Open app, show empty dashboard state (reset local storage first to clear any old states)
+/**
+ * Resets local storage state and initializes mock parameters for autoplay demo start.
+ * @returns {void}
+ */
+function autoplayResetState() {
     localStorage.removeItem("carbontrack_ai_state");
     appState = {
         hasCalculated: false,
@@ -399,17 +391,19 @@ async function startAutoplayDemo() {
     saveStateToLocalStorage();
     renderAllViews();
     switchTab("dashboard");
+}
 
-    await sleep(1500);
-
-    // Step 2: Go to Calculator
+/**
+ * Automates populating the first two stages of the calculator questionnaire.
+ * @param {Function} updateStatus - Visual overlay message update hook.
+ * @returns {Promise<void>}
+ */
+async function autoplayInputsStep1And2(updateStatus) {
     updateStatus("Navigating to Calculator...");
     switchTab("calculator");
     goToStep(1);
-
     await sleep(1500);
 
-    // Step 3: Populate Transportation inputs
     updateStatus("Setting transportation inputs...");
     document.getElementById("input-car-km").value = 250;
     document.getElementById("input-car-km").dispatchEvent(new Event("input"));
@@ -418,69 +412,63 @@ async function startAutoplayDemo() {
     document.getElementById("input-public-km").dispatchEvent(new Event("input"));
     document.getElementById("input-flights").value = 1;
     document.getElementById("input-flights").dispatchEvent(new Event("input"));
-
     await sleep(1500);
 
-    // Next to step 2
     goToStep(2);
-
     await sleep(1500);
 
-    // Populate energy/utilities inputs
     updateStatus("Setting energy and utility inputs...");
     document.getElementById("input-electricity").value = 350;
     document.getElementById("input-electricity").dispatchEvent(new Event("input"));
     document.getElementById("input-solar").value = "partial";
     document.getElementById("input-water").value = 150;
     document.getElementById("input-water").dispatchEvent(new Event("input"));
-
     await sleep(1500);
+}
 
-    // Next to step 3
+/**
+ * Automates populating the last two stages of the calculator questionnaire and submits.
+ * @param {Function} updateStatus - Visual overlay message update hook.
+ * @returns {Promise<void>}
+ */
+async function autoplayInputsStep3And4(updateStatus) {
     goToStep(3);
-
     await sleep(1500);
 
-    // Populate Food/diet inputs
     updateStatus("Setting dietary choices...");
     document.getElementById("input-diet").value = "mixed";
     document.getElementById("input-local-food").value = "sometimes";
     document.getElementById("input-food-waste").value = "minimal";
-
     await sleep(1500);
 
-    // Next to step 4
     goToStep(4);
-
     await sleep(1500);
 
-    // Populate Shopping inputs
     updateStatus("Setting shopping & consumption habits...");
     document.getElementById("input-shopping").value = "average";
     document.getElementById("input-recycling").value = "regularly";
     const trashInput = document.getElementById("input-trash");
     if (trashInput) trashInput.value = "average";
-
     await sleep(1500);
 
-    // Click submit
     updateStatus("Calculating Carbon Footprint...");
     calculateCarbonFootprint();
-
     await sleep(2000);
+}
 
-    // Step 4: View Dashboard stats
+/**
+ * Simulates active changes in the scenario explorer clean energy sliders.
+ * @param {Function} updateStatus - Visual overlay message update hook.
+ * @returns {Promise<void>}
+ */
+async function autoplaySimulateSolar(updateStatus) {
     updateStatus("Dashboard updated with Green Score & SVG charts!");
-
     await sleep(2000);
 
-    // Step 5: Switch to Scenario Explorer
     updateStatus("Navigating to Scenario Explorer...");
     switchTab("scenario");
-
     await sleep(1500);
 
-    // Slowly slide Clean Energy to 100%
     updateStatus("Simulating shift to 100% solar energy...");
     const cleanEnergySlider = document.getElementById("slider-scenario-clean-energy");
     if (cleanEnergySlider) {
@@ -494,16 +482,19 @@ async function startAutoplayDemo() {
             runScenarioSimulation();
         }
     }
-
     await sleep(2000);
+}
 
-    // Step 6: Go to AI Assistant
+/**
+ * Types queries to EcoBuddy and marks daily eco-challenges as complete.
+ * @param {Function} updateStatus - Visual overlay message update hook.
+ * @returns {Promise<void>}
+ */
+async function autoplayChatAndChallenges(updateStatus) {
     updateStatus("Navigating to AI Assistant Coach...");
     switchTab("assistant");
-
     await sleep(1500);
 
-    // Type query: "How to improve my score?"
     updateStatus("Consulting EcoBuddy Coach...");
     const userInput = document.getElementById("chat-user-input");
     const text = "How to improve my score?";
@@ -514,30 +505,60 @@ async function startAutoplayDemo() {
             userInput.value += text[i];
         }
     }
-
     await sleep(1000);
 
-    // Click send
     if (userInput) {
         userInput.value = "";
     }
     sendQuickQuestion(text);
-
     await sleep(3000);
 
-    // Step 7: Go to Eco Challenges
     updateStatus("Navigating to Eco Challenges...");
     switchTab("challenges");
-
     await sleep(2000);
 
-    // Check off first challenge
     updateStatus("Completing carry-a-water-bottle challenge!");
     toggleChallenge("water-bottle");
-
     await sleep(2500);
+}
 
-    // Complete autoplay!
+/**
+ * Triggers and executes the self-guided walkthrough tour of the application.
+ * Mocks user slider inputs, submits calculations, runs scenario simulations,
+ * posts queries to EcoBuddy, completes a challenge, and triggers progress reloads.
+ * @returns {Promise<void>}
+ */
+async function startAutoplayDemo() {
+    const demoOverlay = document.createElement("div");
+    demoOverlay.style.position = "fixed";
+    demoOverlay.style.bottom = "20px";
+    demoOverlay.style.right = "20px";
+    demoOverlay.style.backgroundColor = "hsl(var(--primary-emerald))";
+    demoOverlay.style.color = "#ffffff";
+    demoOverlay.style.padding = "10px 20px";
+    demoOverlay.style.borderRadius = "30px";
+    demoOverlay.style.boxShadow = "var(--shadow-glow)";
+    demoOverlay.style.zIndex = "3000";
+    demoOverlay.style.fontWeight = "bold";
+    demoOverlay.style.fontFamily = "var(--font-sans)";
+    demoOverlay.style.display = "flex";
+    demoOverlay.style.alignItems = "center";
+    demoOverlay.style.gap = "8px";
+    demoOverlay.innerHTML = `<span class="typing-dot" style="animation: dotBounce 1.4s infinite; font-size: 1.5rem; line-height: 0.5;">.</span> Autoplay Demo Running...`;
+    document.body.appendChild(demoOverlay);
+
+    const updateStatus = (text) => {
+        demoOverlay.innerHTML = `<span class="typing-dot" style="animation: dotBounce 1.4s infinite; font-size: 1.5rem; line-height: 0.5;">.</span> ${text}`;
+    };
+
+    autoplayResetState();
+    await sleep(1500);
+
+    await autoplayInputsStep1And2(updateStatus);
+    await autoplayInputsStep3And4(updateStatus);
+    await autoplaySimulateSolar(updateStatus);
+    await autoplayChatAndChallenges(updateStatus);
+
     updateStatus("Autoplay finished! Reloading page in 3s...");
     demoOverlay.style.backgroundColor = "hsl(var(--primary-mint))";
     demoOverlay.style.color = "hsl(var(--text-dark))";

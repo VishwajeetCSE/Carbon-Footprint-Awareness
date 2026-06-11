@@ -236,6 +236,90 @@ function saveStateToLocalStorage() {
 }
 
 /**
+ * Sub-validator for the calculated emissions object.
+ * @param {Object} data - The parsed state data.
+ * @returns {Object} Validated emissions object.
+ */
+function validateEmissions(data) {
+    return {
+        transport: typeof data?.calculatedEmissions?.transport === "number" && isFinite(data.calculatedEmissions.transport) ? Math.max(0, data.calculatedEmissions.transport) : 0,
+        energy: typeof data?.calculatedEmissions?.energy === "number" && isFinite(data.calculatedEmissions.energy) ? Math.max(0, data.calculatedEmissions.energy) : 0,
+        food: typeof data?.calculatedEmissions?.food === "number" && isFinite(data.calculatedEmissions.food) ? Math.max(0, data.calculatedEmissions.food) : 0,
+        shopping: typeof data?.calculatedEmissions?.shopping === "number" && isFinite(data.calculatedEmissions.shopping) ? Math.max(0, data.calculatedEmissions.shopping) : 0,
+        total: typeof data?.calculatedEmissions?.total === "number" && isFinite(data.calculatedEmissions.total) ? Math.max(0, data.calculatedEmissions.total) : 0
+    };
+}
+
+/**
+ * Sub-validator for the gamified daily challenges list.
+ * @param {Object} data - The parsed state data.
+ * @returns {Array} Validated challenges list.
+ */
+function validateChallenges(data) {
+    return Array.isArray(data?.challenges) ? data.challenges.map(c => {
+        const defaultChallenge = appState.challenges.find(dc => dc.id === c.id) || {};
+        return {
+            id: typeof c.id === "string" ? escapeHTML(c.id) : (defaultChallenge.id || ""),
+            text: typeof c.text === "string" ? escapeHTML(c.text) : (defaultChallenge.text || ""),
+            points: typeof c.points === "number" && isFinite(c.points) ? Math.max(0, c.points) : (defaultChallenge.points || 0),
+            completed: typeof c.completed === "boolean" ? c.completed : false
+        };
+    }).filter(c => c.id !== "") : JSON.parse(JSON.stringify(appState.challenges));
+}
+
+/**
+ * Sub-validator for the scenario explorer parameters.
+ * @param {Object} data - The parsed state data.
+ * @returns {Object} Validated scenario simulation configuration.
+ */
+function validateScenarioSim(data) {
+    return {
+        evShare: typeof data?.scenarioSim?.evShare === "number" && isFinite(data.scenarioSim.evShare) ? Math.max(0, Math.min(100, data.scenarioSim.evShare)) : 0,
+        dietShift: typeof data?.scenarioSim?.dietShift === "number" && isFinite(data.scenarioSim.dietShift) ? Math.max(0, Math.min(100, data.scenarioSim.dietShift)) : 0,
+        cleanEnergy: typeof data?.scenarioSim?.cleanEnergy === "number" && isFinite(data.scenarioSim.cleanEnergy) ? Math.max(0, Math.min(100, data.scenarioSim.cleanEnergy)) : 0,
+        wasteReduction: typeof data?.scenarioSim?.wasteReduction === "number" && isFinite(data.scenarioSim.wasteReduction) ? Math.max(0, Math.min(100, data.scenarioSim.wasteReduction)) : (typeof data?.scenarioSim?.wasteRed === "number" && isFinite(data.scenarioSim.wasteRed) ? Math.max(0, Math.min(100, data.scenarioSim.wasteRed)) : 0)
+    };
+}
+
+/**
+ * Sub-validator for the user's historical footprint list.
+ * @param {Object} data - The parsed state data.
+ * @returns {Object} Validated history and calculationHistory arrays.
+ */
+function validateHistory(data) {
+    const history = Array.isArray(data?.history) ? data.history.map(h => ({
+        date: typeof h.date === "string" ? escapeHTML(h.date) : "",
+        footprint: typeof h.footprint === "number" && isFinite(h.footprint) ? Math.max(0, h.footprint) : 0
+    })).filter(h => h.date !== "") : [];
+
+    let calculationHistory = [];
+    if (Array.isArray(data?.calculationHistory)) {
+        calculationHistory = data.calculationHistory.map(h => ({
+            date: typeof h.date === "string" ? escapeHTML(h.date) : "",
+            footprint: typeof h.footprint === "number" && isFinite(h.footprint) ? Math.max(0, h.footprint) : 0
+        })).filter(h => h.date !== "");
+    }
+
+    const finalHistory = history.length > 0 ? history : calculationHistory;
+    return {
+        history: finalHistory,
+        calculationHistory: finalHistory
+    };
+}
+
+/**
+ * Sub-validator for the chatbot conversation logs.
+ * @param {Object} data - The parsed state data.
+ * @returns {Array} Validated chat history.
+ */
+function validateChatHistory(data) {
+    return Array.isArray(data?.chatHistory) ? data.chatHistory.map(ch => ({
+        sender: ch.sender === "user" ? "user" : "system",
+        text: typeof ch.text === "string" ? escapeHTML(ch.text) : ""
+    })).filter(ch => ch.text !== "") : [];
+}
+
+/**
  * Validates the loaded state object schema to prevent type mismatches or prototype pollution.
  * Apply safe defaults if verification fails.
  * @param {Object} data - The parsed localStorage object.
@@ -245,80 +329,24 @@ function validateStateSchema(data) {
     if (!data || typeof data !== "object") return null;
 
     const validated = {};
-
-    // Validate hasCalculated (boolean)
     validated.hasCalculated = typeof data.hasCalculated === "boolean" ? data.hasCalculated : false;
-
-    // Validate calculatedEmissions (object of positive numbers)
-    validated.calculatedEmissions = {
-        transport: typeof data.calculatedEmissions?.transport === "number" && isFinite(data.calculatedEmissions.transport) ? Math.max(0, data.calculatedEmissions.transport) : 0,
-        energy: typeof data.calculatedEmissions?.energy === "number" && isFinite(data.calculatedEmissions.energy) ? Math.max(0, data.calculatedEmissions.energy) : 0,
-        food: typeof data.calculatedEmissions?.food === "number" && isFinite(data.calculatedEmissions.food) ? Math.max(0, data.calculatedEmissions.food) : 0,
-        shopping: typeof data.calculatedEmissions?.shopping === "number" && isFinite(data.calculatedEmissions.shopping) ? Math.max(0, data.calculatedEmissions.shopping) : 0,
-        total: typeof data.calculatedEmissions?.total === "number" && isFinite(data.calculatedEmissions.total) ? Math.max(0, data.calculatedEmissions.total) : 0
-    };
-
-    // Validate greenScore (integer 0-100)
+    validated.calculatedEmissions = validateEmissions(data);
     validated.greenScore = typeof data.greenScore === "number" && isFinite(data.greenScore) ? Math.max(0, Math.min(100, Math.round(data.greenScore))) : 0;
-
-    // Validate dailyStreak (integer >= 0)
     validated.dailyStreak = typeof data.dailyStreak === "number" && isFinite(data.dailyStreak) ? Math.max(0, Math.round(data.dailyStreak)) : 0;
-
-    // Validate lastLoginDate (string or null)
     validated.lastLoginDate = typeof data.lastLoginDate === "string" ? escapeHTML(data.lastLoginDate) : null;
-
-    // Validate greenPoints (integer >= 0)
     validated.greenPoints = typeof data.greenPoints === "number" && isFinite(data.greenPoints) ? Math.max(0, Math.round(data.greenPoints)) : 0;
+    validated.challenges = validateChallenges(data);
 
-    // Validate challenges (array of objects)
-    validated.challenges = Array.isArray(data.challenges) ? data.challenges.map(c => {
-        const defaultChallenge = appState.challenges.find(dc => dc.id === c.id) || {};
-        return {
-            id: typeof c.id === "string" ? escapeHTML(c.id) : (defaultChallenge.id || ""),
-            text: typeof c.text === "string" ? escapeHTML(c.text) : (defaultChallenge.text || ""),
-            points: typeof c.points === "number" && isFinite(c.points) ? Math.max(0, c.points) : (defaultChallenge.points || 0),
-            completed: typeof c.completed === "boolean" ? c.completed : false
-        };
-    }).filter(c => c.id !== "") : JSON.parse(JSON.stringify(appState.challenges));
-
-    // Validate unlockedBadges (array of strings)
     const validBadgeIds = BADGES.map(b => b.id);
     validated.unlockedBadges = Array.isArray(data.unlockedBadges) ? data.unlockedBadges.filter(b => typeof b === "string" && validBadgeIds.includes(b)) : [];
 
-    // Validate scenarioSim (object of numbers 0-100)
-    validated.scenarioSim = {
-        evShare: typeof data.scenarioSim?.evShare === "number" && isFinite(data.scenarioSim.evShare) ? Math.max(0, Math.min(100, data.scenarioSim.evShare)) : 0,
-        dietShift: typeof data.scenarioSim?.dietShift === "number" && isFinite(data.scenarioSim.dietShift) ? Math.max(0, Math.min(100, data.scenarioSim.dietShift)) : 0,
-        cleanEnergy: typeof data.scenarioSim?.cleanEnergy === "number" && isFinite(data.scenarioSim.cleanEnergy) ? Math.max(0, Math.min(100, data.scenarioSim.cleanEnergy)) : 0,
-        wasteReduction: typeof data.scenarioSim?.wasteReduction === "number" && isFinite(data.scenarioSim.wasteReduction) ? Math.max(0, Math.min(100, data.scenarioSim.wasteReduction)) : (typeof data.scenarioSim?.wasteRed === "number" && isFinite(data.scenarioSim.wasteRed) ? Math.max(0, Math.min(100, data.scenarioSim.wasteRed)) : 0)
-    };
+    validated.scenarioSim = validateScenarioSim(data);
 
-    // Validate history (array of objects { date: string, footprint: number })
-    validated.history = Array.isArray(data.history) ? data.history.map(h => ({
-        date: typeof h.date === "string" ? escapeHTML(h.date) : "",
-        footprint: typeof h.footprint === "number" && isFinite(h.footprint) ? Math.max(0, h.footprint) : 0
-    })).filter(h => h.date !== "") : [];
+    const historyData = validateHistory(data);
+    validated.history = historyData.history;
+    validated.calculationHistory = historyData.calculationHistory;
 
-    // Validate calculationHistory (compatibility fallback)
-    if (Array.isArray(data.calculationHistory)) {
-        validated.calculationHistory = data.calculationHistory.map(h => ({
-            date: typeof h.date === "string" ? escapeHTML(h.date) : "",
-            footprint: typeof h.footprint === "number" && isFinite(h.footprint) ? Math.max(0, h.footprint) : 0
-        })).filter(h => h.date !== "");
-        if (validated.history.length === 0) {
-            validated.history = validated.calculationHistory;
-        }
-    } else if (validated.history.length > 0) {
-        validated.calculationHistory = validated.history;
-    } else {
-        validated.calculationHistory = [];
-    }
-
-    // Validate chatHistory
-    validated.chatHistory = Array.isArray(data.chatHistory) ? data.chatHistory.map(ch => ({
-        sender: ch.sender === "user" ? "user" : "system",
-        text: typeof ch.text === "string" ? escapeHTML(ch.text) : ""
-    })).filter(ch => ch.text !== "") : [];
+    validated.chatHistory = validateChatHistory(data);
 
     return validated;
 }
@@ -446,6 +474,72 @@ function calculateShoppingEmissions(shoppingType, recycleLevel) {
 }
 
 /**
+ * Extracts all numeric and select carbon calculator inputs from the DOM.
+ * @returns {Object} Extracted form input values.
+ */
+function fetchCalculatorInputs() {
+    return {
+        carKm: parseFloat(document.getElementById("input-car-km").value),
+        carType: document.getElementById("input-car-type").value,
+        publicKm: parseFloat(document.getElementById("input-public-km").value),
+        flights: parseFloat(document.getElementById("input-flights").value),
+        electricityKwh: parseFloat(document.getElementById("input-electricity").value),
+        solarType: document.getElementById("input-solar").value,
+        waterLiters: parseFloat(document.getElementById("input-water").value),
+        dietType: document.getElementById("input-diet").value,
+        localFood: document.getElementById("input-local-food").value,
+        foodWaste: document.getElementById("input-food-waste").value,
+        shoppingType: document.getElementById("input-shopping").value,
+        recycleLevel: document.getElementById("input-recycling").value
+    };
+}
+
+/**
+ * Reviews the calculated Green Score and awards appropriate milestone badges.
+ * @returns {void}
+ */
+function awardCalculatorBadges() {
+    unlockBadge('eco-beginner');
+    if (appState.greenScore >= 75) {
+        unlockBadge('climate-champion');
+    }
+}
+
+/**
+ * Updates the user's historical emissions records in state, pre-populating mock points if empty.
+ * @param {number} totalFootprint - The newly calculated carbon footprint.
+ * @returns {void}
+ */
+function updateStateHistory(totalFootprint) {
+    if (!appState.history) {
+        appState.history = [];
+    }
+
+    if (appState.history.length === 0) {
+        const dateNow = new Date();
+        const date2Wk = new Date(dateNow.getTime() - 14 * 24 * 60 * 60 * 1000);
+        const date4Wk = new Date(dateNow.getTime() - 28 * 24 * 60 * 60 * 1000);
+        const formatOptions = { month: 'short', day: 'numeric' };
+
+        appState.history = [
+            { date: date4Wk.toLocaleDateString(undefined, formatOptions), footprint: Number((totalFootprint * 1.35).toFixed(2)) },
+            { date: date2Wk.toLocaleDateString(undefined, formatOptions), footprint: Number((totalFootprint * 1.18).toFixed(2)) },
+            { date: dateNow.toLocaleDateString(undefined, formatOptions), footprint: Number(totalFootprint.toFixed(2)) }
+        ];
+    } else {
+        appState.history.push({
+            date: new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+            footprint: Number(totalFootprint.toFixed(2))
+        });
+        if (appState.history.length > MAX_HISTORY_ENTRIES) {
+            appState.history.shift();
+        }
+    }
+    // Maintain compatibility with VM sandbox tests
+    appState.calculationHistory = appState.history;
+}
+
+/**
  * Calculates the user's annual carbon footprint in metric tons of CO2 equivalent (CO2e).
  * Extracts input values, applies EPA/IPCC emission coefficients, maps outputs,
  * updates the global application state, checks badge unlocking rules,
@@ -453,33 +547,14 @@ function calculateShoppingEmissions(shoppingType, recycleLevel) {
  * @returns {void}
  */
 function calculateCarbonFootprint() {
-    // 1. Fetch values
-    const carKm = parseFloat(document.getElementById("input-car-km").value);
-    const carType = document.getElementById("input-car-type").value;
-    const publicKm = parseFloat(document.getElementById("input-public-km").value);
-    const flights = parseFloat(document.getElementById("input-flights").value);
-    
-    const electricityKwh = parseFloat(document.getElementById("input-electricity").value);
-    const solarType = document.getElementById("input-solar").value;
-    const waterLiters = parseFloat(document.getElementById("input-water").value);
-    
-    const dietType = document.getElementById("input-diet").value;
-    const localFood = document.getElementById("input-local-food").value;
-    const foodWaste = document.getElementById("input-food-waste").value;
-    
-    const shoppingType = document.getElementById("input-shopping").value;
-    const recycleLevel = document.getElementById("input-recycling").value;
+    const inputs = fetchCalculatorInputs();
 
-    // 2. Compute emissions via decomposed helpers
-    const transportBreakdown = calculateTransportEmissions(carKm, carType, publicKm, flights);
-    const totalTransport = transportBreakdown.total;
-    const totalEnergy = calculateEnergyEmissions(electricityKwh, solarType, waterLiters);
-    const totalFood = calculateFoodEmissions(dietType, localFood, foodWaste);
-    const totalShopping = calculateShoppingEmissions(shoppingType, recycleLevel);
-
+    const totalTransport = calculateTransportEmissions(inputs.carKm, inputs.carType, inputs.publicKm, inputs.flights).total;
+    const totalEnergy = calculateEnergyEmissions(inputs.electricityKwh, inputs.solarType, inputs.waterLiters);
+    const totalFood = calculateFoodEmissions(inputs.dietType, inputs.localFood, inputs.foodWaste);
+    const totalShopping = calculateShoppingEmissions(inputs.shoppingType, inputs.recycleLevel);
     const totalFootprint = totalTransport + totalEnergy + totalFood + totalShopping;
 
-    // Update State
     appState.calculatedEmissions = {
         transport: Number(totalTransport.toFixed(2)),
         energy: Number(totalEnergy.toFixed(2)),
@@ -489,55 +564,15 @@ function calculateCarbonFootprint() {
     };
     appState.hasCalculated = true;
 
-    // Calculate Green Score (0-100 scale: 12 tons carbon is 0 score, 1 ton carbon is 100 score)
-    const baselineMax = EMISSION_BASE_MAX;
-    const baselineMin = EMISSION_BASE_MIN;
-    let score = 100 - ((totalFootprint - baselineMin) / (baselineMax - baselineMin)) * 100;
-    score = Math.round(score);
-    appState.greenScore = Math.max(0, Math.min(100, score));
+    const rawScore = 100 - ((totalFootprint - EMISSION_BASE_MIN) / (EMISSION_BASE_MAX - EMISSION_BASE_MIN)) * 100;
+    appState.greenScore = Math.max(0, Math.min(100, Math.round(rawScore)));
 
-    // Award Badge for calculation
-    unlockBadge('eco-beginner');
-
-    // If score is high, award climate champion
-    if (appState.greenScore >= 75) {
-        unlockBadge('climate-champion');
-    }
-
-    // Update calculation history
-    if (!appState.history) {
-        appState.history = [];
-    }
-    
-    // Check if this is the first calculation to pre-populate simulated trend
-    if (appState.history.length === 0) {
-        const dateNow = new Date();
-        const date2Wk = new Date(dateNow.getTime() - 14 * 24 * 60 * 60 * 1000);
-        const date4Wk = new Date(dateNow.getTime() - 28 * 24 * 60 * 60 * 1000);
-        
-        const formatOptions = { month: 'short', day: 'numeric' };
-        
-        appState.history = [
-            { date: date4Wk.toLocaleDateString(undefined, formatOptions), footprint: Number((totalFootprint * 1.35).toFixed(2)) },
-            { date: date2Wk.toLocaleDateString(undefined, formatOptions), footprint: Number((totalFootprint * 1.18).toFixed(2)) },
-            { date: dateNow.toLocaleDateString(undefined, formatOptions), footprint: Number(totalFootprint.toFixed(2)) }
-        ];
-    } else {
-        // Add new point
-        appState.history.push({
-            date: new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-            footprint: Number(totalFootprint.toFixed(2))
-        });
-        if (appState.history.length > MAX_HISTORY_ENTRIES) {
-            appState.history.shift();
-        }
-    }
+    awardCalculatorBadges();
+    updateStateHistory(totalFootprint);
 
     saveStateToLocalStorage();
     renderAllViews();
     switchTab("dashboard");
-
-    // Pop visual success prompt
     showSystemNotification("Calculation Success!", "Your personal carbon footprint has been calculated.");
 }
 
@@ -664,6 +699,39 @@ function getPieChartCategories(emissions) {
  * @param {number} total - Sum of all categories footprint.
  * @returns {void}
  */
+/**
+ * Computes polar-to-cartesian trigonometry and formats the SVG path data for a donut wedge.
+ * @param {number} cx - Center X coordinate.
+ * @param {number} cy - Center Y coordinate.
+ * @param {number} r - Segment radius.
+ * @param {number} cumulativePercentage - Accrued angle offset fraction.
+ * @param {number} percent - Current segment percentage value.
+ * @returns {string} SVG path string.
+ */
+function buildPieSegmentPath(cx, cy, r, cumulativePercentage, percent) {
+    const angleStart = cumulativePercentage * 360;
+    const angleEnd = (cumulativePercentage + percent) * 360;
+
+    const radStart = (angleStart - 90) * Math.PI / 180;
+    const radEnd = (angleEnd - 90) * Math.PI / 180;
+
+    const x1 = cx + r * Math.cos(radStart);
+    const y1 = cy + r * Math.sin(radStart);
+    const x2 = cx + r * Math.cos(radEnd);
+    const y2 = cy + r * Math.sin(radEnd);
+
+    const largeArc = percent > 0.5 ? 1 : 0;
+    return `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+}
+
+/**
+ * Iterates through categories, appends SVG paths, and renders legends.
+ * @param {SVGElement} pieSvg - Target Pie SVG node.
+ * @param {HTMLElement} legend - Legend container element.
+ * @param {Array<Object>} categories - Category array list.
+ * @param {number} total - Sum of all categories footprint.
+ * @returns {void}
+ */
 function drawPieSegments(pieSvg, legend, categories, total) {
     let cumulativePercentage = 0;
     const cx = 100;
@@ -674,19 +742,7 @@ function drawPieSegments(pieSvg, legend, categories, total) {
         const percent = cat.val / total;
         if (percent === 0) return;
 
-        const angleStart = cumulativePercentage * 360;
-        const angleEnd = (cumulativePercentage + percent) * 360;
-
-        const radStart = (angleStart - 90) * Math.PI / 180;
-        const radEnd = (angleEnd - 90) * Math.PI / 180;
-
-        const x1 = cx + r * Math.cos(radStart);
-        const y1 = cy + r * Math.sin(radStart);
-        const x2 = cx + r * Math.cos(radEnd);
-        const y2 = cy + r * Math.sin(radEnd);
-
-        const largeArc = percent > 0.5 ? 1 : 0;
-        const pathData = `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+        const pathData = buildPieSegmentPath(cx, cy, r, cumulativePercentage, percent);
 
         const pathEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
         pathEl.setAttribute("d", pathData);
@@ -771,21 +827,13 @@ function renderPieChart() {
 }
 
 /**
- * Generates and renders the dynamic SVG historical trend line chart on the Dashboard tab.
- * Calculates plot scales, draws gridlines, plots linear coordinates, sets glow filters,
- * binds hover inspectors, and injects chart accessibility tags.
+ * Injects screen-reader titles and summaries for dynamic chart updates.
+ * @param {SVGElement} trendSvg - Target trend SVG canvas.
+ * @param {HTMLElement} legend - Legend DOM container.
+ * @param {Array<Object>} history - Carbon records history array.
  * @returns {void}
  */
-function renderTrendLineChart() {
-    const trendSvg = document.getElementById("trend-line-chart");
-    const legend = document.getElementById("trend-chart-legend");
-    if (!trendSvg || !legend) return;
-
-    // Clear contents
-    trendSvg.innerHTML = "";
-    legend.innerHTML = "";
-
-    // Set accessibility description
+function setChartAccessibilityTags(trendSvg, legend, history) {
     const trendTitle = document.createElementNS("http://www.w3.org/2000/svg", "title");
     trendTitle.id = "trend-chart-title";
     trendTitle.textContent = "Emissions Trend Chart";
@@ -793,7 +841,6 @@ function renderTrendLineChart() {
 
     const trendDesc = document.createElementNS("http://www.w3.org/2000/svg", "desc");
     trendDesc.id = "trend-chart-desc";
-    const history = appState.history || [];
     if (history.length > 0) {
         const historyStr = history.map(h => `${h.date}: ${h.footprint} Tons`).join(", ");
         trendDesc.textContent = `A line graph showing your footprint history: ${historyStr}.`;
@@ -801,33 +848,33 @@ function renderTrendLineChart() {
         trendDesc.textContent = "A line graph plotting your carbon footprint history across your recent calculations.";
     }
     trendSvg.appendChild(trendDesc);
+}
 
-    if (history.length === 0) {
-        trendSvg.innerHTML = `
-            <line x1="30" y1="15" x2="285" y2="15" stroke="rgba(255,255,255,0.03)" stroke-dasharray="3,3" />
-            <line x1="30" y1="65" x2="285" y2="65" stroke="rgba(255,255,255,0.03)" stroke-dasharray="3,3" />
-            <line x1="30" y1="115" x2="285" y2="115" stroke="rgba(255,255,255,0.03)" stroke-dasharray="3,3" />
-            <text x="157" y="70" fill="hsla(var(--text-primary), 0.15)" font-size="8" text-anchor="middle">Awaiting calculations...</text>
-        `;
-        legend.innerHTML = `<div class="legend-placeholder">No history data available. Complete calculations to log points.</div>`;
-        return;
-    }
+/**
+ * Draws coordinate grids and placeholders when history log is empty.
+ * @param {SVGElement} trendSvg - Target trend SVG canvas.
+ * @param {HTMLElement} legend - Legend DOM container.
+ * @returns {void}
+ */
+function renderEmptyTrendPlaceholder(trendSvg, legend) {
+    trendSvg.innerHTML = `
+        <line x1="30" y1="15" x2="285" y2="15" stroke="rgba(255,255,255,0.03)" stroke-dasharray="3,3" />
+        <line x1="30" y1="65" x2="285" y2="65" stroke="rgba(255,255,255,0.03)" stroke-dasharray="3,3" />
+        <line x1="30" y1="115" x2="285" y2="115" stroke="rgba(255,255,255,0.03)" stroke-dasharray="3,3" />
+        <text x="157" y="70" fill="hsla(var(--text-primary), 0.15)" font-size="8" text-anchor="middle">Awaiting calculations...</text>
+    `;
+    legend.innerHTML = `<div class="legend-placeholder">No history data available. Complete calculations to log points.</div>`;
+}
 
-    const w = 300;
-    const h = 140;
-    const padL = 30;
-    const padR = 15;
-    const padT = 15;
-    const padB = 25;
-    
-    const plotW = w - padL - padR;
-    const plotH = h - padT - padB;
-
-    const footprints = history.map(pt => pt.footprint);
+/**
+ * Calculates Y-axis minimum and maximum boundaries based on footprint history.
+ * @param {Array<number>} footprints - Footprints dataset array.
+ * @returns {Object} Boundaries object containing minVal and maxVal.
+ */
+function calculateTrendScale(footprints) {
     let maxVal = Math.max(...footprints);
     let minVal = Math.min(...footprints);
-    
-    // Safety margin to prevent scaling collapse
+
     if (maxVal === minVal) {
         maxVal += 2.0;
         minVal = Math.max(0, minVal - 2.0);
@@ -836,8 +883,15 @@ function renderTrendLineChart() {
         maxVal += margin;
         minVal = Math.max(0, minVal - margin);
     }
+    return { maxVal, minVal };
+}
 
-    // Set SVG definitions (Gradients and Glow filters)
+/**
+ * Injects linear gradients and filters into SVG defs for chart glow styles.
+ * @param {SVGElement} trendSvg - Target trend SVG canvas.
+ * @returns {void}
+ */
+function drawTrendGlowFilters(trendSvg) {
     const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
     defs.innerHTML = `
         <linearGradient id="trend-grad" x1="0" y1="0" x2="0" y2="1">
@@ -850,24 +904,47 @@ function renderTrendLineChart() {
         </filter>
     `;
     trendSvg.appendChild(defs);
+}
 
-    // Draw horizontal grid lines and labels
+/**
+ * Generates and renders the dynamic SVG historical trend line chart on the Dashboard tab.
+ * Calculates plot scales, draws gridlines, plots linear coordinates, sets glow filters,
+ * binds hover inspectors, and injects chart accessibility tags.
+ * @returns {void}
+ */
+function renderTrendLineChart() {
+    const trendSvg = document.getElementById("trend-line-chart");
+    const legend = document.getElementById("trend-chart-legend");
+    if (!trendSvg || !legend) return;
+
+    trendSvg.innerHTML = "";
+    legend.innerHTML = "";
+
+    const history = appState.history || [];
+    setChartAccessibilityTags(trendSvg, legend, history);
+
+    if (history.length === 0) {
+        renderEmptyTrendPlaceholder(trendSvg, legend);
+        return;
+    }
+
+    const w = 300, h = 140, padL = 30, padR = 15, padT = 15, padB = 25;
+    const plotW = w - padL - padR, plotH = h - padT - padB;
+
+    const { maxVal, minVal } = calculateTrendScale(history.map(pt => pt.footprint));
+
+    drawTrendGlowFilters(trendSvg);
     drawChartGridLines(trendSvg, maxVal, minVal, padL, padR, padT, plotH, w);
 
-    // Generate point coordinates
     const coords = [];
     const n = history.length;
-    
     history.forEach((pt, idx) => {
         const x = n > 1 ? padL + (idx / (n - 1)) * plotW : padL + plotW / 2;
         const y = padT + (1 - (pt.footprint - minVal) / (maxVal - minVal)) * plotH;
         coords.push({ x, y, date: pt.date, footprint: pt.footprint });
     });
 
-    // Draw area path and line path
     drawChartTrendLine(trendSvg, coords, padT, plotH);
-
-    // Draw interactive points, labels, and handle legends
     drawChartPlotPoints(trendSvg, legend, coords, h);
 }
 
@@ -1130,6 +1207,56 @@ function showTypingIndicator() {
 }
 
 /**
+ * Formulates a customized response detailing the user's highest emissions category and advice.
+ * @returns {string} Contextual profile sustainability suggestions.
+ */
+function getCoachProfileResponse() {
+    if (!appState.hasCalculated) {
+        return "You haven't run the carbon footprint calculator yet! Please navigate to the **Calculator** tab first to set up your baseline score.";
+    }
+
+    const em = appState.calculatedEmissions;
+    const categories = [
+        { name: "Transport", val: em.transport, advice: "consider switching some commutes to public transit or carpooling, or planning a transition to a hybrid or electric vehicle." },
+        { name: "Home Energy", val: em.energy, advice: "look into upgrading to LED bulbs, unplugging idle appliances, and perhaps installing solar panels to capture clean energy." },
+        { name: "Diet & Food Habits", val: em.food, advice: "try incorporating more plant-based meals, reducing weekly red meat intake, and sourcing ingredients from local food hubs." },
+        { name: "Shopping & Waste", val: em.shopping, advice: "repair electronics and clothing before purchasing new ones, reuse plastic materials, and step up your home recycling game." }
+    ];
+    categories.sort((a, b) => b.val - a.val);
+    const worst = categories[0];
+    const pct = Math.round((worst.val / em.total) * 100);
+
+    return `Your current Carbon Footprint is **${em.total} tons CO₂e** per year, giving you a Green Score of **${appState.greenScore}/100**.\n\nYour highest source of emissions is **${worst.name}**, contributing **${worst.val} tons** (approx. **${pct}%** of your total emissions). To make the fastest impact, I suggest you ${worst.advice}`;
+}
+
+/**
+ * Builds a personalized 30-day weekly carbon footprint reduction plan.
+ * @returns {string} Custom 30-day roadmap schedule.
+ */
+function getCoachRoadmapResponse() {
+    if (!appState.hasCalculated) {
+        return "You haven't run the carbon footprint calculator yet! Once you calculate your footprint, I will generate a customized 30-day weekly reduction roadmap for you.";
+    }
+    const em = appState.calculatedEmissions;
+    const roadmapItems = [
+        { name: "Transport", val: em.transport, action: "Switch 2 commutes/wk to train/bus or walk", detail: "Reduces weekly transport emissions by up to 30%." },
+        { name: "Home Energy", val: em.energy, action: "Switch bulbs to LED & power down idle devices", detail: "Cuts electrical vampire drain by 10% instantly." },
+        { name: "Food & Diet", val: em.food, action: "Introduce 2 meatless (vegan) days weekly", detail: "Mitigates red-meat farming emissions substantially." },
+        { name: "Consumption", val: em.shopping, action: "Avoid high tech/fast fashion shopping sprees", detail: "Curtails upstream industrial manufacture outputs." }
+    ];
+    roadmapItems.sort((a, b) => b.val - a.val);
+
+    let response = `Based on your highest carbon outputs, here is your personalized **30-Day Carbon Reduction Roadmap**:\n\n`;
+    roadmapItems.forEach((item, index) => {
+        response += `**Week ${index + 1}: Target ${item.name}** (Current emissions: ${item.val} Tons)\n`;
+        response += `* *Action:* ${item.action}\n`;
+        response += `* *Expected Benefit:* ${item.detail}\n\n`;
+    });
+    response += `You can track this roadmap in real-time under the **Roadmap** section of your **Eco Dashboard**!`;
+    return response;
+}
+
+/**
  * Evaluates queries against keyword sets locally to generate chatbot coach guidelines.
  * Maps high emissions segments and suggests custom roadmap configurations.
  * @param {string} query - The query entered by the user.
@@ -1138,72 +1265,28 @@ function showTypingIndicator() {
 function getCoachResponse(query) {
     const normalized = query.toLowerCase();
 
-    // Check Contextual Profile queries
-    if (normalized.includes("my score") || normalized.includes("my footprint") || normalized.includes("improve score") || normalized.includes("highest")) {
-        if (!appState.hasCalculated) {
-            return "You haven't run the carbon footprint calculator yet! Please navigate to the **Calculator** tab first to set up your baseline score.";
+    // Declarative key-to-action rules registry
+    const rules = [
+        { keys: ["my score", "my footprint", "improve score", "highest"], action: getCoachProfileResponse },
+        { keys: ["roadmap", "plan", "sustainability roadmap", "reduction plan"], action: getCoachRoadmapResponse },
+        { keys: ["transport", "car", "flight", "travel"], response: COACH_AI_RULES.transport[0] },
+        { keys: ["energy", "electricity", "solar", "water", "bulb"], response: COACH_AI_RULES.energy[0] },
+        { keys: ["diet", "food", "meat", "vegan", "vegetarian"], response: COACH_AI_RULES.diet[0] },
+        { keys: ["offset", "tree", "planting"], response: COACH_AI_RULES.offset[0] },
+        { keys: ["calculation", "math", "factors", "how work"], response: COACH_AI_RULES.calculations[0] }
+    ];
+
+    for (const rule of rules) {
+        if (rule.keys.some(k => normalized.includes(k))) {
+            return rule.action ? rule.action() : rule.response;
         }
-        
-        // Find highest emission category
-        const em = appState.calculatedEmissions;
-        const categories = [
-            { name: "Transport", val: em.transport, advice: "consider switching some commutes to public transit or carpooling, or planning a transition to a hybrid or electric vehicle." },
-            { name: "Home Energy", val: em.energy, advice: "look into upgrading to LED bulbs, unplugging idle appliances, and perhaps installing solar panels to capture clean energy." },
-            { name: "Diet & Food Habits", val: em.food, advice: "try incorporating more plant-based meals, reducing weekly red meat intake, and sourcing ingredients from local food hubs." },
-            { name: "Shopping & Waste", val: em.shopping, advice: "repair electronics and clothing before purchasing new ones, reuse plastic materials, and step up your home recycling game." }
-        ];
-        categories.sort((a, b) => b.val - a.val);
-        const worst = categories[0];
-        const pct = Math.round((worst.val / em.total) * 100);
-
-        return `Your current Carbon Footprint is **${em.total} tons CO₂e** per year, giving you a Green Score of **${appState.greenScore}/100**.\n\nYour highest source of emissions is **${worst.name}**, contributing **${worst.val} tons** (approx. **${pct}%** of your total emissions). To make the fastest impact, I suggest you ${worst.advice}`;
     }
 
-    // Check custom roadmap / plan query
-    if (normalized.includes("roadmap") || normalized.includes("plan") || normalized.includes("sustainability roadmap") || normalized.includes("reduction plan")) {
-        if (!appState.hasCalculated) {
-            return "You haven't run the carbon footprint calculator yet! Once you calculate your footprint, I will generate a customized 30-day weekly reduction roadmap for you.";
-        }
-        const em = appState.calculatedEmissions;
-        const roadmapItems = [
-            { name: "Transport", val: em.transport, action: "Switch 2 commutes/wk to train/bus or walk", detail: "Reduces weekly transport emissions by up to 30%." },
-            { name: "Home Energy", val: em.energy, action: "Switch bulbs to LED & power down idle devices", detail: "Cuts electrical vampire drain by 10% instantly." },
-            { name: "Food & Diet", val: em.food, action: "Introduce 2 meatless (vegan) days weekly", detail: "Mitigates red-meat farming emissions substantially." },
-            { name: "Consumption", val: em.shopping, action: "Avoid high tech/fast fashion shopping sprees", detail: "Curtails upstream industrial manufacture outputs." }
-        ];
-        roadmapItems.sort((a, b) => b.val - a.val);
-        
-        let response = `Based on your highest carbon outputs, here is your personalized **30-Day Carbon Reduction Roadmap**:\n\n`;
-        roadmapItems.forEach((item, index) => {
-            response += `**Week ${index + 1}: Target ${item.name}** (Current emissions: ${item.val} Tons)\n`;
-            response += `* *Action:* ${item.action}\n`;
-            response += `* *Expected Benefit:* ${item.detail}\n\n`;
-        });
-        response += `You can track this roadmap in real-time under the **Roadmap** section of your **Eco Dashboard**!`;
-        return response;
-    }
-
-    // Standard Keywords checks
-    if (normalized.includes("transport") || normalized.includes("car") || normalized.includes("flight") || normalized.includes("travel")) {
-        return COACH_AI_RULES.transport[0];
-    }
-    if (normalized.includes("energy") || normalized.includes("electricity") || normalized.includes("solar") || normalized.includes("water") || normalized.includes("bulb")) {
-        return COACH_AI_RULES.energy[0];
-    }
-    if (normalized.includes("diet") || normalized.includes("food") || normalized.includes("meat") || normalized.includes("vegan") || normalized.includes("vegetarian")) {
-        return COACH_AI_RULES.diet[0];
-    }
-    if (normalized.includes("offset") || normalized.includes("tree") || normalized.includes("planting")) {
-        return COACH_AI_RULES.offset[0];
-    }
-    if (normalized.includes("calculation") || normalized.includes("math") || normalized.includes("factors") || normalized.includes("how work")) {
-        return COACH_AI_RULES.calculations[0];
-    }
     if (normalized.includes("hello") || normalized.includes("hi ") || normalized.includes("hey")) {
-        return COACH_AI_RULES.greetings[Math.floor(Math.random() * COACH_AI_RULES.greetings.length)];
+        const greetings = COACH_AI_RULES.greetings;
+        return greetings[Math.floor(Math.random() * greetings.length)];
     }
 
-    // Default Fallback sustainability advice
     return "That's an interesting question! Broadly, the best way to tackle climate change is to target the **big three**: reducing high-mileage vehicle transit, lowering home heating and air conditioning power draw, and switching to a diet containing fewer animal products. Ask me specifically about **transport**, **diet**, **home energy**, or **offsets** for detailed advice.";
 }
 
@@ -1664,6 +1747,32 @@ function switchTab(tabId) {
  * Renders the daily eco-challenges list and achievements badges grid on the Challenges tab.
  * @returns {void}
  */
+/**
+ * Renders the achievements badges grid based on unlocked state.
+ * @param {HTMLElement} gridEl - Target badges grid DOM container.
+ * @returns {void}
+ */
+function renderBadgesGrid(gridEl) {
+    gridEl.innerHTML = "";
+    BADGES.forEach(badge => {
+        const isUnlocked = appState.unlockedBadges.includes(badge.id);
+        const card = document.createElement("div");
+        card.className = `badge-card ${isUnlocked ? 'unlocked' : ''}`;
+        card.innerHTML = `
+            <div class="badge-icon-box ${badge.color === 'gold' ? 'gold' : ''}">
+                <i data-lucide="${badge.icon}"></i>
+            </div>
+            <h4>${badge.name}</h4>
+            <p>${badge.desc}</p>
+        `;
+        gridEl.appendChild(card);
+    });
+}
+
+/**
+ * Renders the daily eco-challenges list and achievements badges grid on the Challenges tab.
+ * @returns {void}
+ */
 function renderChallenges() {
     const listEl = document.getElementById("challenges-checkbox-list");
     const gridEl = document.getElementById("achievements-badges-grid");
@@ -1700,21 +1809,7 @@ function renderChallenges() {
         listEl.appendChild(row);
     });
 
-    // Render achievements badges
-    gridEl.innerHTML = "";
-    BADGES.forEach(badge => {
-        const isUnlocked = appState.unlockedBadges.includes(badge.id);
-        const card = document.createElement("div");
-        card.className = `badge-card ${isUnlocked ? 'unlocked' : ''}`;
-        card.innerHTML = `
-            <div class="badge-icon-box ${badge.color === 'gold' ? 'gold' : ''}">
-                <i data-lucide="${badge.icon}"></i>
-            </div>
-            <h4>${badge.name}</h4>
-            <p>${badge.desc}</p>
-        `;
-        gridEl.appendChild(card);
-    });
+    renderBadgesGrid(gridEl);
 }
 
 /**
@@ -1878,31 +1973,11 @@ function showSystemNotification(title, message) {
  * posts queries to EcoBuddy, completes a challenge, and triggers progress reloads.
  * @returns {Promise<void>}
  */
-async function startAutoplayDemo() {
-    // Show a floating visual indicator on the screen that autoplay is running
-    const demoOverlay = document.createElement("div");
-    demoOverlay.style.position = "fixed";
-    demoOverlay.style.bottom = "20px";
-    demoOverlay.style.right = "20px";
-    demoOverlay.style.backgroundColor = "hsl(var(--primary-emerald))";
-    demoOverlay.style.color = "#ffffff";
-    demoOverlay.style.padding = "10px 20px";
-    demoOverlay.style.borderRadius = "30px";
-    demoOverlay.style.boxShadow = "var(--shadow-glow)";
-    demoOverlay.style.zIndex = "3000";
-    demoOverlay.style.fontWeight = "bold";
-    demoOverlay.style.fontFamily = "var(--font-sans)";
-    demoOverlay.style.display = "flex";
-    demoOverlay.style.alignItems = "center";
-    demoOverlay.style.gap = "8px";
-    demoOverlay.innerHTML = `<span class="typing-dot" style="animation: dotBounce 1.4s infinite; font-size: 1.5rem; line-height: 0.5;">.</span> Autoplay Demo Running...`;
-    document.body.appendChild(demoOverlay);
-
-    const updateStatus = (text) => {
-        demoOverlay.innerHTML = `<span class="typing-dot" style="animation: dotBounce 1.4s infinite; font-size: 1.5rem; line-height: 0.5;">.</span> ${text}`;
-    };
-
-    // Step 1: Open app, show empty dashboard state (reset local storage first to clear any old states)
+/**
+ * Resets local storage state and initializes mock parameters for autoplay demo start.
+ * @returns {void}
+ */
+function autoplayResetState() {
     localStorage.removeItem("carbontrack_ai_state");
     appState = {
         hasCalculated: false,
@@ -1925,17 +2000,19 @@ async function startAutoplayDemo() {
     saveStateToLocalStorage();
     renderAllViews();
     switchTab("dashboard");
+}
 
-    await sleep(1500);
-
-    // Step 2: Go to Calculator
+/**
+ * Automates populating the first two stages of the calculator questionnaire.
+ * @param {Function} updateStatus - Visual overlay message update hook.
+ * @returns {Promise<void>}
+ */
+async function autoplayInputsStep1And2(updateStatus) {
     updateStatus("Navigating to Calculator...");
     switchTab("calculator");
     goToStep(1);
-
     await sleep(1500);
 
-    // Step 3: Populate Transportation inputs
     updateStatus("Setting transportation inputs...");
     document.getElementById("input-car-km").value = 250;
     document.getElementById("input-car-km").dispatchEvent(new Event("input"));
@@ -1944,69 +2021,63 @@ async function startAutoplayDemo() {
     document.getElementById("input-public-km").dispatchEvent(new Event("input"));
     document.getElementById("input-flights").value = 1;
     document.getElementById("input-flights").dispatchEvent(new Event("input"));
-
     await sleep(1500);
 
-    // Next to step 2
     goToStep(2);
-
     await sleep(1500);
 
-    // Populate energy/utilities inputs
     updateStatus("Setting energy and utility inputs...");
     document.getElementById("input-electricity").value = 350;
     document.getElementById("input-electricity").dispatchEvent(new Event("input"));
     document.getElementById("input-solar").value = "partial";
     document.getElementById("input-water").value = 150;
     document.getElementById("input-water").dispatchEvent(new Event("input"));
-
     await sleep(1500);
+}
 
-    // Next to step 3
+/**
+ * Automates populating the last two stages of the calculator questionnaire and submits.
+ * @param {Function} updateStatus - Visual overlay message update hook.
+ * @returns {Promise<void>}
+ */
+async function autoplayInputsStep3And4(updateStatus) {
     goToStep(3);
-
     await sleep(1500);
 
-    // Populate Food/diet inputs
     updateStatus("Setting dietary choices...");
     document.getElementById("input-diet").value = "mixed";
     document.getElementById("input-local-food").value = "sometimes";
     document.getElementById("input-food-waste").value = "minimal";
-
     await sleep(1500);
 
-    // Next to step 4
     goToStep(4);
-
     await sleep(1500);
 
-    // Populate Shopping inputs
     updateStatus("Setting shopping & consumption habits...");
     document.getElementById("input-shopping").value = "average";
     document.getElementById("input-recycling").value = "regularly";
     const trashInput = document.getElementById("input-trash");
     if (trashInput) trashInput.value = "average";
-
     await sleep(1500);
 
-    // Click submit
     updateStatus("Calculating Carbon Footprint...");
     calculateCarbonFootprint();
-
     await sleep(2000);
+}
 
-    // Step 4: View Dashboard stats
+/**
+ * Simulates active changes in the scenario explorer clean energy sliders.
+ * @param {Function} updateStatus - Visual overlay message update hook.
+ * @returns {Promise<void>}
+ */
+async function autoplaySimulateSolar(updateStatus) {
     updateStatus("Dashboard updated with Green Score & SVG charts!");
-
     await sleep(2000);
 
-    // Step 5: Switch to Scenario Explorer
     updateStatus("Navigating to Scenario Explorer...");
     switchTab("scenario");
-
     await sleep(1500);
 
-    // Slowly slide Clean Energy to 100%
     updateStatus("Simulating shift to 100% solar energy...");
     const cleanEnergySlider = document.getElementById("slider-scenario-clean-energy");
     if (cleanEnergySlider) {
@@ -2020,16 +2091,19 @@ async function startAutoplayDemo() {
             runScenarioSimulation();
         }
     }
-
     await sleep(2000);
+}
 
-    // Step 6: Go to AI Assistant
+/**
+ * Types queries to EcoBuddy and marks daily eco-challenges as complete.
+ * @param {Function} updateStatus - Visual overlay message update hook.
+ * @returns {Promise<void>}
+ */
+async function autoplayChatAndChallenges(updateStatus) {
     updateStatus("Navigating to AI Assistant Coach...");
     switchTab("assistant");
-
     await sleep(1500);
 
-    // Type query: "How to improve my score?"
     updateStatus("Consulting EcoBuddy Coach...");
     const userInput = document.getElementById("chat-user-input");
     const text = "How to improve my score?";
@@ -2040,30 +2114,60 @@ async function startAutoplayDemo() {
             userInput.value += text[i];
         }
     }
-
     await sleep(1000);
 
-    // Click send
     if (userInput) {
         userInput.value = "";
     }
     sendQuickQuestion(text);
-
     await sleep(3000);
 
-    // Step 7: Go to Eco Challenges
     updateStatus("Navigating to Eco Challenges...");
     switchTab("challenges");
-
     await sleep(2000);
 
-    // Check off first challenge
     updateStatus("Completing carry-a-water-bottle challenge!");
     toggleChallenge("water-bottle");
-
     await sleep(2500);
+}
 
-    // Complete autoplay!
+/**
+ * Triggers and executes the self-guided walkthrough tour of the application.
+ * Mocks user slider inputs, submits calculations, runs scenario simulations,
+ * posts queries to EcoBuddy, completes a challenge, and triggers progress reloads.
+ * @returns {Promise<void>}
+ */
+async function startAutoplayDemo() {
+    const demoOverlay = document.createElement("div");
+    demoOverlay.style.position = "fixed";
+    demoOverlay.style.bottom = "20px";
+    demoOverlay.style.right = "20px";
+    demoOverlay.style.backgroundColor = "hsl(var(--primary-emerald))";
+    demoOverlay.style.color = "#ffffff";
+    demoOverlay.style.padding = "10px 20px";
+    demoOverlay.style.borderRadius = "30px";
+    demoOverlay.style.boxShadow = "var(--shadow-glow)";
+    demoOverlay.style.zIndex = "3000";
+    demoOverlay.style.fontWeight = "bold";
+    demoOverlay.style.fontFamily = "var(--font-sans)";
+    demoOverlay.style.display = "flex";
+    demoOverlay.style.alignItems = "center";
+    demoOverlay.style.gap = "8px";
+    demoOverlay.innerHTML = `<span class="typing-dot" style="animation: dotBounce 1.4s infinite; font-size: 1.5rem; line-height: 0.5;">.</span> Autoplay Demo Running...`;
+    document.body.appendChild(demoOverlay);
+
+    const updateStatus = (text) => {
+        demoOverlay.innerHTML = `<span class="typing-dot" style="animation: dotBounce 1.4s infinite; font-size: 1.5rem; line-height: 0.5;">.</span> ${text}`;
+    };
+
+    autoplayResetState();
+    await sleep(1500);
+
+    await autoplayInputsStep1And2(updateStatus);
+    await autoplayInputsStep3And4(updateStatus);
+    await autoplaySimulateSolar(updateStatus);
+    await autoplayChatAndChallenges(updateStatus);
+
     updateStatus("Autoplay finished! Reloading page in 3s...");
     demoOverlay.style.backgroundColor = "hsl(var(--primary-mint))";
     demoOverlay.style.color = "hsl(var(--text-dark))";

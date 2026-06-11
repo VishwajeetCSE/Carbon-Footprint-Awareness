@@ -38,6 +38,8 @@ try {
 
     fs.writeFileSync(outputFile, bundledContent, 'utf8');
     console.log(`✅ Bundle successfully created: ${outputFile}`);
+    console.log("Build successful");
+    console.log(`Modules compiled: ${files.length}`);
 } catch (error) {
     console.error(`❌ Bundling failed: ${error.message}`);
     process.exit(1);
