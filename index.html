@@ -165,7 +165,9 @@
                         <h3>Footprint Breakdown</h3>
                         <div class="chart-flex">
                             <div class="chart-svg-container">
-                                <svg id="breakdown-pie-chart" viewBox="0 0 200 200" width="100%" height="100%">
+                                <svg id="breakdown-pie-chart" viewBox="0 0 200 200" width="100%" height="100%" role="img" aria-labelledby="pie-chart-title pie-chart-desc">
+                                    <title id="pie-chart-title">Carbon Footprint Breakdown</title>
+                                    <desc id="pie-chart-desc">A donut chart showing the percentage contribution of transportation, energy, diet, and shopping to your annual carbon footprint.</desc>
                                     <circle cx="100" cy="100" r="75" fill="none" stroke="#2a3d30" stroke-width="35" />
                                     <!-- Dynamic Pie Segments added by JS -->
                                 </svg>
@@ -182,7 +184,9 @@
                         <h3>Emissions Trend</h3>
                         <div class="chart-flex" style="flex-direction: column; align-items: stretch; width: 100%;">
                             <div class="chart-svg-container" style="width: 100%; height: 140px; position: relative;">
-                                <svg id="trend-line-chart" viewBox="0 0 300 140" width="100%" height="100%">
+                                <svg id="trend-line-chart" viewBox="0 0 300 140" width="100%" height="100%" role="img" aria-labelledby="trend-chart-title trend-chart-desc">
+                                    <title id="trend-chart-title">Emissions Trend Chart</title>
+                                    <desc id="trend-chart-desc">A line graph plotting your carbon footprint history across your recent calculations.</desc>
                                     <!-- Dynamic Line and Points added by JS -->
                                 </svg>
                             </div>

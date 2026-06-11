@@ -195,8 +195,25 @@ Total Emissions = Transportation + Home Energy + Diet & Food + Consumption & Sho
 * Check that simulated reductions show the correct equivalents (e.g. equivalent trees planted).
 
 ### 3. Smart Assistant Chatbot
-* Type `"How to improve my score?"` and verify the coach analyzes your worst emission category.
+* Type `"How to improve my score?"` and verify the coach analyzes your worst category.
 * Type `"Explain calculations"` to see formulas.
+
+---
+
+## 🏛️ Architecture
+CarbonTrack AI is designed as a lightweight, framework-free client-side Single Page Application (SPA). To understand its design layout, state lifecycle flow, and SVG graphing pipeline, read the full [ARCHITECTURE.md](file:///c:/Users/Ajay/Desktop/Carbon-Calculator/ARCHITECTURE.md).
+
+## 🔒 Security
+The platform operates entirely offline, keeping user data private in `LocalStorage`. For threat modeling, DOM-based XSS sanitization procedures, and state validation details, read the full [SECURITY.md](file:///c:/Users/Ajay/Desktop/Carbon-Calculator/SECURITY.md).
+
+## 🧪 Testing
+CarbonTrack AI features automated unit tests and manual browser QA matrices. For execution instructions, expected vs actual result tables, compatibility matrix, and responsive checks, read the full [TESTING.md](file:///c:/Users/Ajay/Desktop/Carbon-Calculator/TESTING.md).
+
+## ♿ Accessibility
+CarbonTrack AI is designed for WCAG 2.1 AA compliance, featuring semantic HTML structure, keyboard focus highlights, and Polite ARIA live regions. For accessibility verification checklists and contributing guidelines, read [QA_CHECKLIST.md](file:///c:/Users/Ajay/Desktop/Carbon-Calculator/QA_CHECKLIST.md) and [CONTRIBUTING.md](file:///c:/Users/Ajay/Desktop/Carbon-Calculator/CONTRIBUTING.md).
+
+## 📈 Validation
+All carbon calculation constants, solar multipliers, and mathematical formulas align with standard EPA and IPCC benchmarks. For validation values and boundary constraints, read the full [VALIDATION.md](file:///c:/Users/Ajay/Desktop/Carbon-Calculator/VALIDATION.md).
 
 ---
 

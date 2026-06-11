@@ -53,6 +53,9 @@ const EMISSION_FACTORS = {
     }
 };
 
+// Active element tracking for accessibility focus restoration
+let lastActiveElement = null;
+
 // Global App State
 let appState = {
     hasCalculated: false,
@@ -79,7 +82,7 @@ let appState = {
         evShare: 0,
         dietShift: 0,
         cleanEnergy: 0,
-        wasteRed: 0
+        wasteReduction: 0
     },
     chatHistory: [],
     history: []
@@ -113,7 +116,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 { id: 'vegan-meal', text: 'Eat a plant-based (vegan) meal today', points: 25, completed: false }
             ],
             unlockedBadges: ['eco-beginner', 'energy-saver'],
-            scenarioSim: { evShare: 40, dietShift: 50, cleanEnergy: 100, wasteRed: 20 },
+            scenarioSim: { evShare: 40, dietShift: 50, cleanEnergy: 100, wasteReduction: 20 },
             chatHistory: [
                 { sender: 'user', text: 'How do I improve my score?' },
                 { sender: 'system', text: 'Your current Carbon Footprint is **7.2 tons CO₂e** per year, giving you a Green Score of **45/100**.\n\nYour highest source of emissions is **Diet & Food Habits**, contributing **2.7 tons** (approx. **38%** of your total emissions). To make the fastest impact, I suggest you try incorporating more plant-based meals, reducing weekly red meat intake, and sourcing ingredients from local food hubs.' }
@@ -172,21 +175,38 @@ function initializeUIElements() {
 
     // Scenario Sliders sync and simulation event binding
     const scenarioInputs = [
-        { sliderId: "slider-scenario-ev", labelId: "scenario-val-ev", suffix: "% EV" },
-        { sliderId: "slider-scenario-diet", labelId: "scenario-val-diet", suffix: "% Shift" },
-        { sliderId: "slider-scenario-clean-energy", labelId: "scenario-val-clean-energy", customFormat: (v) => v === "0" ? "Current Grid" : v === "50" ? "50% Solar" : "100% Solar" },
-        { sliderId: "slider-scenario-waste", labelId: "scenario-val-waste", suffix: "% Reduction" }
+        { sliderId: "slider-scenario-ev", labelId: "scenario-val-ev", suffix: "% EV", stateProp: "evShare" },
+        { sliderId: "slider-scenario-diet", labelId: "scenario-val-diet", suffix: "% Shift", stateProp: "dietShift" },
+        { sliderId: "slider-scenario-clean-energy", labelId: "scenario-val-clean-energy", customFormat: (v) => v === "0" ? "Current Grid" : v === "50" ? "50% Solar" : "100% Solar", stateProp: "cleanEnergy" },
+        { sliderId: "slider-scenario-waste", labelId: "scenario-val-waste", suffix: "% Reduction", stateProp: "wasteReduction" }
     ];
 
     scenarioInputs.forEach(item => {
         const slider = document.getElementById(item.sliderId);
         if (slider) {
-            slider.addEventListener("input", () => {
-                const label = document.getElementById(item.labelId);
+            // Set slider value from state
+            const stateValue = appState.scenarioSim[item.stateProp];
+            if (typeof stateValue === "number") {
+                slider.value = stateValue;
+            }
+            
+            const label = document.getElementById(item.labelId);
+            if (label) {
                 if (item.customFormat) {
                     label.textContent = item.customFormat(slider.value);
                 } else {
                     label.textContent = slider.value + item.suffix;
+                }
+            }
+
+            slider.addEventListener("input", () => {
+                const label = document.getElementById(item.labelId);
+                if (label) {
+                    if (item.customFormat) {
+                        label.textContent = item.customFormat(slider.value);
+                    } else {
+                        label.textContent = slider.value + item.suffix;
+                    }
                 }
                 runScenarioSimulation();
             });
@@ -292,6 +312,13 @@ function goToStep(stepNum) {
     lucide.createIcons();
 }
 
+/**
+ * Calculates the user's annual carbon footprint in metric tons of CO2 equivalent (CO2e).
+ * Extracts input values, applies EPA/IPCC emission coefficients, maps outputs,
+ * updates the global application state, checks badge unlocking rules,
+ * saves progress to LocalStorage, and transitions to the Dashboard view.
+ * @returns {void}
+ */
 function calculateCarbonFootprint() {
     // 1. Fetch values
     const carKm = parseFloat(document.getElementById("input-car-km").value);
@@ -410,6 +437,11 @@ function calculateCarbonFootprint() {
 }
 
 // --- Dashboard Render & Dynamic SVG Pie Chart ---
+/**
+ * Renders the dashboard metrics, scores, comparison indicators, environmental equivalents,
+ * and calls downstream rendering routines for pie and trend charts.
+ * @returns {void}
+ */
 function renderDashboard() {
     const scoreVal = document.getElementById("dashboard-score-val");
     const co2Val = document.getElementById("dashboard-co2-val");
@@ -500,6 +532,12 @@ function renderDashboard() {
     renderRoadmap();
 }
 
+/**
+ * Generates and renders the dynamic SVG breakdown donut chart in the Dashboard tab.
+ * Draws segment paths for Transport, Energy, Diet, and Shopping, maps HSL colors,
+ * configures responsive interactive tooltips, and appends chart accessibility structures.
+ * @returns {void}
+ */
 function renderPieChart() {
     const pieSvg = document.getElementById("breakdown-pie-chart");
     const legend = document.getElementById("pie-chart-legend");
@@ -508,6 +546,21 @@ function renderPieChart() {
     // Clear contents
     pieSvg.innerHTML = "";
     legend.innerHTML = "";
+
+    // Set accessibility description
+    const pieTitle = document.createElementNS("http://www.w3.org/2000/svg", "title");
+    pieTitle.id = "pie-chart-title";
+    pieTitle.textContent = "Carbon Footprint Breakdown";
+    pieSvg.appendChild(pieTitle);
+
+    const pieDesc = document.createElementNS("http://www.w3.org/2000/svg", "desc");
+    pieDesc.id = "pie-chart-desc";
+    if (appState.hasCalculated) {
+        pieDesc.textContent = `Donut breakdown chart: Transport ${appState.calculatedEmissions.transport} Tons, Energy ${appState.calculatedEmissions.energy} Tons, Diet ${appState.calculatedEmissions.food} Tons, Shopping ${appState.calculatedEmissions.shopping} Tons.`;
+    } else {
+        pieDesc.textContent = "A donut chart showing the percentage contribution of transportation, energy, diet, and shopping to your annual carbon footprint.";
+    }
+    pieSvg.appendChild(pieDesc);
 
     const categories = [
         { name: "Transport", val: appState.calculatedEmissions.transport, color: "hsl(152, 76%, 54%)" }, // mint
@@ -594,6 +647,12 @@ function renderPieChart() {
     pieSvg.appendChild(innerCircle);
 }
 
+/**
+ * Generates and renders the dynamic SVG historical trend line chart on the Dashboard tab.
+ * Calculates plot scales, draws gridlines, plots linear coordinates, sets glow filters,
+ * binds hover inspectors, and injects chart accessibility tags.
+ * @returns {void}
+ */
 function renderTrendLineChart() {
     const trendSvg = document.getElementById("trend-line-chart");
     const legend = document.getElementById("trend-chart-legend");
@@ -603,7 +662,22 @@ function renderTrendLineChart() {
     trendSvg.innerHTML = "";
     legend.innerHTML = "";
 
+    // Set accessibility description
+    const trendTitle = document.createElementNS("http://www.w3.org/2000/svg", "title");
+    trendTitle.id = "trend-chart-title";
+    trendTitle.textContent = "Emissions Trend Chart";
+    trendSvg.appendChild(trendTitle);
+
+    const trendDesc = document.createElementNS("http://www.w3.org/2000/svg", "desc");
+    trendDesc.id = "trend-chart-desc";
     const history = appState.history || [];
+    if (history.length > 0) {
+        const historyStr = history.map(h => `${h.date}: ${h.footprint} Tons`).join(", ");
+        trendDesc.textContent = `A line graph showing your footprint history: ${historyStr}.`;
+    } else {
+        trendDesc.textContent = "A line graph plotting your carbon footprint history across your recent calculations.";
+    }
+    trendSvg.appendChild(trendDesc);
 
     if (history.length === 0) {
         trendSvg.innerHTML = `
@@ -799,8 +873,10 @@ function renderMiniChecklist() {
             <div class="mini-check-box">
                 <i data-lucide="check"></i>
             </div>
-            <span class="mini-check-text">${challenge.text}</span>
+            <span class="mini-check-text"></span>
         `;
+        const textSpan = typeof item.querySelector === "function" ? item.querySelector(".mini-check-text") : null;
+        if (textSpan) textSpan.textContent = challenge.text;
         item.addEventListener("click", () => toggleChallenge(challenge.id));
         item.addEventListener("keydown", (e) => {
             if (e.key === "Enter" || e.key === " ") {
@@ -849,6 +925,12 @@ function renderRoadmap() {
 }
 
 // --- Scenario Explorer Simulator Logic ---
+/**
+ * Runs the scenario calculator to simulate hypothetical lifestyle improvements.
+ * Updates simulated projections, adjusts forecast visualization bar widths,
+ * issues the Energy Saver milestone achievements, and populates explanatory summary logs.
+ * @returns {void}
+ */
 function runScenarioSimulation() {
     if (!appState.hasCalculated) {
         document.getElementById("scenario-current-val").textContent = "0.0 Tons";
@@ -863,6 +945,13 @@ function runScenarioSimulation() {
     const dietShift = parseFloat(document.getElementById("slider-scenario-diet").value);
     const cleanEnergy = parseFloat(document.getElementById("slider-scenario-clean-energy").value);
     const wasteRed = parseFloat(document.getElementById("slider-scenario-waste").value);
+
+    // Persist values in application state
+    appState.scenarioSim.evShare = evShare;
+    appState.scenarioSim.dietShift = dietShift;
+    appState.scenarioSim.cleanEnergy = cleanEnergy;
+    appState.scenarioSim.wasteReduction = wasteRed;
+    saveStateToLocalStorage();
 
     // Calculate current values
     const currentTotal = appState.calculatedEmissions.total;
@@ -993,12 +1082,12 @@ function appendChatMessage(sender, text) {
     const msg = document.createElement("div");
     msg.className = `chat-msg ${sender === 'user' ? 'user-msg' : 'system-msg'}`;
     
-    // Sanitize user inputs to prevent XSS
-    const escapedText = sender === 'user' ? escapeHTML(text) : text;
+    // Sanitize ALL inputs (both user and system messages) to prevent XSS
+    const escapedText = escapeHTML(text);
     
-    // Parse markdown-like bold syntax (**text**) for styling
+    // Parse markdown-like bold syntax (**text**) for styling safely
     let formattedText = escapedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    // Parse line breaks
+    // Parse line breaks safely
     formattedText = formattedText.replace(/\n/g, '<br>');
 
     msg.innerHTML = `
@@ -1032,16 +1121,12 @@ function showTypingIndicator() {
     return msg;
 }
 
-// Inline keyframe helper style for typing dot bounce animation if needed
-const style = document.createElement('style');
-style.textContent = `
-@keyframes dotBounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-4px); }
-}
-`;
-document.head.appendChild(style);
-
+/**
+ * Evaluates queries against keyword sets locally to generate chatbot coach guidelines.
+ * Maps high emissions segments and suggests custom roadmap configurations.
+ * @param {string} query - The query entered by the user.
+ * @returns {string} The customized coach recommendation.
+ */
 function getCoachResponse(query) {
     const normalized = query.toLowerCase();
 
@@ -1114,7 +1199,11 @@ function getCoachResponse(query) {
     return "That's an interesting question! Broadly, the best way to tackle climate change is to target the **big three**: reducing high-mileage vehicle transit, lowering home heating and air conditioning power draw, and switching to a diet containing fewer animal products. Ask me specifically about **transport**, **diet**, **home energy**, or **offsets** for detailed advice.";
 }
 
-// Populate Meta Sidebar Coach suggestions on Assistant Tab
+/**
+ * Renders the AI coach insights in the sidebar of the Assistant tab.
+ * Dynamically computes conservation suggestions based on calculated emission categories.
+ * @returns {void}
+ */
 function renderSidebarCoachInsights() {
     const sidebar = document.getElementById("ai-contextual-tips");
     if (!sidebar) return;
@@ -1201,11 +1290,13 @@ function renderChallenges() {
                 <i data-lucide="check"></i>
             </div>
             <div class="challenge-details">
-                <h4>${challenge.text}</h4>
+                <h4 class="challenge-title"></h4>
                 <p>Gain points for reducing daily climate impact.</p>
             </div>
             <div class="challenge-reward">+${challenge.points} PTS</div>
         `;
+        const titleH4 = typeof row.querySelector === "function" ? row.querySelector(".challenge-title") : null;
+        if (titleH4) titleH4.textContent = challenge.text;
         row.addEventListener("click", () => toggleChallenge(challenge.id));
         row.addEventListener("keydown", (e) => {
             if (e.key === "Enter" || e.key === " ") {
@@ -1267,6 +1358,9 @@ function toggleChallenge(id) {
 function unlockBadge(badgeId) {
     if (appState.unlockedBadges.includes(badgeId)) return;
 
+    // Track active element to recover keyboard focus upon closing
+    lastActiveElement = document.activeElement;
+
     appState.unlockedBadges.push(badgeId);
     saveStateToLocalStorage();
 
@@ -1303,9 +1397,20 @@ function closeBadgeAlert() {
     if (modal) {
         modal.classList.add("hidden");
     }
+    // Restore focus to the element that triggered the modal for accessibility
+    if (lastActiveElement && typeof lastActiveElement.focus === "function") {
+        lastActiveElement.focus();
+    }
 }
 
 // --- Notifications Helper ---
+/**
+ * Renders and displays a floating Toast system notification.
+ * Safe DOM rendering values are assigned using textContent to mitigate XSS risks.
+ * @param {string} title - The notification header text.
+ * @param {string} message - The detail description message text.
+ * @returns {void}
+ */
 function showSystemNotification(title, message) {
     announceToScreenReader(`Notification: ${title}. ${message}`);
 
@@ -1333,23 +1438,19 @@ function showSystemNotification(title, message) {
     toast.innerHTML = `
         <i data-lucide="bell" style="color:hsl(var(--primary-mint)); flex-shrink:0;"></i>
         <div>
-            <h4 style="font-size:0.9rem; font-weight:600; color:#fff;">${title}</h4>
-            <p style="font-size:0.75rem; color:hsl(var(--text-muted));">${message}</p>
+            <h4 id="toast-title" style="font-size:0.9rem; font-weight:600; color:#fff;"></h4>
+            <p id="toast-message" style="font-size:0.75rem; color:hsl(var(--text-muted));"></p>
         </div>
     `;
 
+    // Assign values safely using textContent to prevent DOM XSS
+    const tEl = typeof toast.querySelector === "function" ? toast.querySelector("#toast-title") : null;
+    const mEl = typeof toast.querySelector === "function" ? toast.querySelector("#toast-message") : null;
+    if (tEl) tEl.textContent = title;
+    if (mEl) mEl.textContent = message;
+
     document.body.appendChild(toast);
     lucide.createIcons();
-
-    // Keyframe for toast entry
-    const styleEl = document.createElement('style');
-    styleEl.textContent = `
-    @keyframes toastIn {
-        from { transform: translateY(50px); opacity: 0; }
-        to { transform: translateY(0); opacity: 1; }
-    }
-    `;
-    document.head.appendChild(styleEl);
 
     setTimeout(() => {
         toast.style.animation = "toastOut 0.3s ease forwards";
@@ -1357,19 +1458,97 @@ function showSystemNotification(title, message) {
     }, 3500);
 }
 
-// Add simple toastOut keyframe if missing
-const styleToastOut = document.createElement('style');
-styleToastOut.textContent = `
-@keyframes toastOut {
-    from { transform: translateY(0); opacity: 1; }
-    to { transform: translateY(50px); opacity: 0; }
-}
-`;
-document.head.appendChild(styleToastOut);
-
 // --- Local Storage Management ---
 function saveStateToLocalStorage() {
     localStorage.setItem("carbontrack_ai_state", JSON.stringify(appState));
+}
+
+/**
+ * Validates the loaded state object schema to prevent type mismatches or prototype pollution.
+ * Apply safe defaults if verification fails.
+ * @param {Object} data - The parsed localStorage object.
+ * @returns {Object|null} The validated state object or null if invalid.
+ */
+function validateStateSchema(data) {
+    if (!data || typeof data !== "object") return null;
+
+    const validated = {};
+
+    // Validate hasCalculated (boolean)
+    validated.hasCalculated = typeof data.hasCalculated === "boolean" ? data.hasCalculated : false;
+
+    // Validate calculatedEmissions (object of positive numbers)
+    validated.calculatedEmissions = {
+        transport: typeof data.calculatedEmissions?.transport === "number" && isFinite(data.calculatedEmissions.transport) ? Math.max(0, data.calculatedEmissions.transport) : 0,
+        energy: typeof data.calculatedEmissions?.energy === "number" && isFinite(data.calculatedEmissions.energy) ? Math.max(0, data.calculatedEmissions.energy) : 0,
+        food: typeof data.calculatedEmissions?.food === "number" && isFinite(data.calculatedEmissions.food) ? Math.max(0, data.calculatedEmissions.food) : 0,
+        shopping: typeof data.calculatedEmissions?.shopping === "number" && isFinite(data.calculatedEmissions.shopping) ? Math.max(0, data.calculatedEmissions.shopping) : 0,
+        total: typeof data.calculatedEmissions?.total === "number" && isFinite(data.calculatedEmissions.total) ? Math.max(0, data.calculatedEmissions.total) : 0
+    };
+
+    // Validate greenScore (integer 0-100)
+    validated.greenScore = typeof data.greenScore === "number" && isFinite(data.greenScore) ? Math.max(0, Math.min(100, Math.round(data.greenScore))) : 0;
+
+    // Validate dailyStreak (integer >= 0)
+    validated.dailyStreak = typeof data.dailyStreak === "number" && isFinite(data.dailyStreak) ? Math.max(0, Math.round(data.dailyStreak)) : 0;
+
+    // Validate lastLoginDate (string or null)
+    validated.lastLoginDate = typeof data.lastLoginDate === "string" ? escapeHTML(data.lastLoginDate) : null;
+
+    // Validate greenPoints (integer >= 0)
+    validated.greenPoints = typeof data.greenPoints === "number" && isFinite(data.greenPoints) ? Math.max(0, Math.round(data.greenPoints)) : 0;
+
+    // Validate challenges (array of objects)
+    validated.challenges = Array.isArray(data.challenges) ? data.challenges.map(c => {
+        const defaultChallenge = appState.challenges.find(dc => dc.id === c.id) || {};
+        return {
+            id: typeof c.id === "string" ? escapeHTML(c.id) : (defaultChallenge.id || ""),
+            text: typeof c.text === "string" ? escapeHTML(c.text) : (defaultChallenge.text || ""),
+            points: typeof c.points === "number" && isFinite(c.points) ? Math.max(0, c.points) : (defaultChallenge.points || 0),
+            completed: typeof c.completed === "boolean" ? c.completed : false
+        };
+    }).filter(c => c.id !== "") : JSON.parse(JSON.stringify(appState.challenges));
+
+    // Validate unlockedBadges (array of strings)
+    const validBadgeIds = BADGES.map(b => b.id);
+    validated.unlockedBadges = Array.isArray(data.unlockedBadges) ? data.unlockedBadges.filter(b => typeof b === "string" && validBadgeIds.includes(b)) : [];
+
+    // Validate scenarioSim (object of numbers 0-100)
+    validated.scenarioSim = {
+        evShare: typeof data.scenarioSim?.evShare === "number" && isFinite(data.scenarioSim.evShare) ? Math.max(0, Math.min(100, data.scenarioSim.evShare)) : 0,
+        dietShift: typeof data.scenarioSim?.dietShift === "number" && isFinite(data.scenarioSim.dietShift) ? Math.max(0, Math.min(100, data.scenarioSim.dietShift)) : 0,
+        cleanEnergy: typeof data.scenarioSim?.cleanEnergy === "number" && isFinite(data.scenarioSim.cleanEnergy) ? Math.max(0, Math.min(100, data.scenarioSim.cleanEnergy)) : 0,
+        wasteReduction: typeof data.scenarioSim?.wasteReduction === "number" && isFinite(data.scenarioSim.wasteReduction) ? Math.max(0, Math.min(100, data.scenarioSim.wasteReduction)) : (typeof data.scenarioSim?.wasteRed === "number" && isFinite(data.scenarioSim.wasteRed) ? Math.max(0, Math.min(100, data.scenarioSim.wasteRed)) : 0)
+    };
+
+    // Validate history (array of objects { date: string, footprint: number })
+    validated.history = Array.isArray(data.history) ? data.history.map(h => ({
+        date: typeof h.date === "string" ? escapeHTML(h.date) : "",
+        footprint: typeof h.footprint === "number" && isFinite(h.footprint) ? Math.max(0, h.footprint) : 0
+    })).filter(h => h.date !== "") : [];
+
+    // Validate calculationHistory (compatibility fallback)
+    if (Array.isArray(data.calculationHistory)) {
+        validated.calculationHistory = data.calculationHistory.map(h => ({
+            date: typeof h.date === "string" ? escapeHTML(h.date) : "",
+            footprint: typeof h.footprint === "number" && isFinite(h.footprint) ? Math.max(0, h.footprint) : 0
+        })).filter(h => h.date !== "");
+        if (validated.history.length === 0) {
+            validated.history = validated.calculationHistory;
+        }
+    } else if (validated.history.length > 0) {
+        validated.calculationHistory = validated.history;
+    } else {
+        validated.calculationHistory = [];
+    }
+
+    // Validate chatHistory
+    validated.chatHistory = Array.isArray(data.chatHistory) ? data.chatHistory.map(ch => ({
+        sender: ch.sender === "user" ? "user" : "system",
+        text: typeof ch.text === "string" ? escapeHTML(ch.text) : ""
+    })).filter(ch => ch.text !== "") : [];
+
+    return validated;
 }
 
 function loadStateFromLocalStorage() {
@@ -1377,7 +1556,10 @@ function loadStateFromLocalStorage() {
     if (raw) {
         try {
             const parsed = JSON.parse(raw);
-            appState = { ...appState, ...parsed };
+            const validated = validateStateSchema(parsed);
+            if (validated) {
+                appState = validated;
+            }
         } catch (e) {
             console.error("Error loading localStorage state:", e);
         }
@@ -1402,7 +1584,7 @@ function resetUserData() {
                 { id: 'vegan-meal', text: 'Eat a plant-based (vegan) meal today', points: 25, completed: false }
             ],
             unlockedBadges: [],
-            scenarioSim: { evShare: 0, dietShift: 0, cleanEnergy: 0, wasteRed: 0 },
+            scenarioSim: { evShare: 0, dietShift: 0, cleanEnergy: 0, wasteReduction: 0 },
             chatHistory: []
         };
         saveStateToLocalStorage();
@@ -1472,7 +1654,12 @@ function announceToScreenReader(message) {
     }
 }
 
-// --- Autoplay Demo Tour ---
+/**
+ * Triggers and executes the self-guided walkthrough tour of the application.
+ * Mocks user slider inputs, submits calculations, runs scenario simulations,
+ * posts queries to EcoBuddy, completes a challenge, and triggers progress reloads.
+ * @returns {void}
+ */
 function startAutoplayDemo() {
     // Show a floating visual indicator on the screen that autoplay is running
     const demoOverlay = document.createElement("div");
@@ -1514,7 +1701,7 @@ function startAutoplayDemo() {
             { id: 'vegan-meal', text: 'Eat a plant-based (vegan) meal today', points: 25, completed: false }
         ],
         unlockedBadges: [],
-        scenarioSim: { evShare: 0, dietShift: 0, cleanEnergy: 0, wasteRed: 0 },
+        scenarioSim: { evShare: 0, dietShift: 0, cleanEnergy: 0, wasteReduction: 0 },
         chatHistory: []
     };
     saveStateToLocalStorage();
@@ -1571,7 +1758,8 @@ function startAutoplayDemo() {
                                     updateStatus("Setting shopping & consumption habits...");
                                     document.getElementById("input-shopping").value = "average";
                                     document.getElementById("input-recycling").value = "regularly";
-                                    document.getElementById("input-trash").value = "average";
+                                    const trashInput = document.getElementById("input-trash");
+                                    if (trashInput) trashInput.value = "average";
 
                                     setTimeout(() => {
                                         // Click submit
